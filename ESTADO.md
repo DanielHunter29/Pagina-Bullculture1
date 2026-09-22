@@ -1,9 +1,28 @@
 # ESTADO.md — Memoria de trabajo BULLCULTURE
 
-## Módulo actual: M1 — Modelo de datos y admin base
+## Módulo actual: M2 — API de catálogo (DRF)
 ## Estado: pendiente (esperando confirmación para iniciar)
 
 ## Hitos completados
+- [x] M1 Modelo de datos y admin base — 2026-09-21
+      - 3 apps bajo `apps/`: **catalog** (Category, Product, ProductImage, Batch),
+        **discounts** (VolumeDiscountRule), **orders** (Order, OrderItem).
+      - Base común `apps/common`: `TimeStampedModel` abstracto y `money.py`
+        (dinero con `Decimal`, `quantize_money` a 2 decimales).
+      - Stock derivado de lotes (Batch) con FEFO; `available_stock`/`is_low_stock`.
+      - Order con datos de invitado, aceptación Ley 1581, estados de pago y envío,
+        referencia única `BC-...` (idempotencia M6) y `recalculate_totals()`.
+      - Migraciones 0001 para las 3 apps; todo registrado en Django admin con
+        inlines (imágenes + lotes en Producto; ítems en Pedido) y recálculo de
+        totales al guardar en el admin.
+      - Puntos de control M1 (verificados):
+        - `makemigrations --check` → sin cambios pendientes (migraciones limpias).
+        - `django check` → 0 issues.
+        - 16 tests OK: validaciones (no-negativos, %≤100, vencimiento>recepción),
+          stock por lotes, descuentos (best_for_quantity), totales con Decimal
+          quantizado, y **humo de admin** (altas de categoría/producto+lote).
+
+
 - [x] M0 Cimientos e infraestructura — 2026-09-21
       - Monorepo con git inicializado (rama `main`).
       - Backend Django 6.1.1 + DRF 3.18.1 + psycopg 3.3.6; settings divididos
@@ -39,6 +58,14 @@
   `brand.*` con los hex exactos de la paleta.
 - **Frontend fuera de compose**: se desplegará en Vercel; en dev corre con `npm run dev`.
 - **URL admin no predecible / 2FA / rate limiting**: se implementan en M8 (login seguro).
+- **Stock por lotes (M1)**: el stock disponible NO se almacena en Product; se deriva
+  de la suma de `Batch.quantity` (fuente de verdad para inventario y vencimientos).
+  El descuento de stock atómico (FEFO + `select_for_update`) se hará en M6.
+- **Imágenes (M1)**: `ProductImage.image_url` (URLField) por ahora; se migrará a
+  Cloudinary en M9 (evita depender de Pillow/almacenamiento local ahora).
+- **Objetivo del producto**: `goal` como choice único (filtro simple en M2).
+- **Config de tests**: `config/settings/test.py` con SQLite en memoria para correr
+  la suite sin depender de PostgreSQL/Docker.
 
 ## Pendientes / deuda técnica
 - Ejecutar `docker compose up --build` con Docker Desktop abierto para validación
@@ -48,6 +75,7 @@
 - `next lint` está deprecado en Next 16; migrar a ESLint CLI cuando toque.
 
 ## Próximo paso
-- M1: modelar el dominio (Categoría, Producto, Lote con vencimiento,
-  ReglaDescuentoPorVolumen, Pedido, ItemPedido…), dinero con `Decimal`,
-  migraciones limpias y registro en Django admin.
+- M2: API de catálogo (DRF) — endpoints de categorías; lista de productos con
+  filtros (categoría, precio, objetivo), orden y buscador; detalle con stock y
+  relacionados; serializers con validación estricta; CORS ya restringido;
+  paginación (PAGE_SIZE=12 ya configurado en base).

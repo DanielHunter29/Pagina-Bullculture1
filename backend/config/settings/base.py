@@ -43,8 +43,12 @@ THIRD_PARTY_APPS = [
     "corsheaders",
 ]
 
-# Apps propias del proyecto (se irán agregando en módulos posteriores).
-LOCAL_APPS = []
+# Apps propias del proyecto.
+LOCAL_APPS = [
+    "apps.catalog",
+    "apps.discounts",
+    "apps.orders",
+]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
