@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { BullMark } from "@/components/brand/BullMark";
 import type { ProductImage } from "@/lib/api";
+import { optimizedImage } from "@/lib/images";
 import { cn } from "@/lib/utils";
 
 export function ProductGallery({
@@ -31,8 +32,9 @@ export function ProductGallery({
       <div className="aspect-square w-full overflow-hidden rounded-lg border border-brand-border bg-brand-surface">
         {/* eslint-disable-next-line @next/next/no-img-element -- Cloudinary/next-image en M9 */}
         <img
-          src={current.image_url}
+          src={optimizedImage(current.image_url, 900)}
           alt={current.alt_text || name}
+          decoding="async"
           className="h-full w-full object-cover"
         />
       </div>
@@ -54,8 +56,10 @@ export function ProductGallery({
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={img.image_url}
+                src={optimizedImage(img.image_url, 160)}
                 alt={img.alt_text || `${name} ${i + 1}`}
+                loading="lazy"
+                decoding="async"
                 className="h-full w-full object-cover"
               />
             </button>

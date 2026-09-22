@@ -1,9 +1,31 @@
 # ESTADO.md — Memoria de trabajo BULLCULTURE
 
-## Módulo actual: M9 — SEO técnico y rendimiento
+## Módulo actual: M10 — Hardening final, QA y despliegue
 ## Estado: pendiente (esperando confirmación para iniciar)
 
 ## Hitos completados
+- [x] M9 SEO técnico y rendimiento — 2026-09-22
+      - Metadatos: layout con OpenGraph/Twitter/keywords/canonical; catálogo con
+        `generateMetadata` dinámico (título por categoría/búsqueda + canonical);
+        detalle con canonical.
+      - JSON-LD (`components/seo/JsonLd` + `lib/schema.ts`): Store/Organization
+        (con dirección Bogotá + areaServed Colombia) en el layout; Product+Offer
+        y BreadcrumbList en el detalle.
+      - `app/sitemap.ts` (estáticas + categorías + todos los productos vía API,
+        revalidate 1h) y `app/robots.ts` (bloquea /checkout, apunta al sitemap).
+      - `app/opengraph-image.tsx`: imagen OG 1200×630 con `next/og`.
+      - Imágenes: `lib/images.ts::optimizedImage` (Cloudinary `f_auto,q_auto,w_`)
+        aplicado en tarjetas, galería y carrito; `loading="lazy"` + `decoding="async"`.
+      - Puntos de control M9 (verificados en vivo):
+        - sitemap.xml accesible con 25 URLs; robots.txt correcto.
+        - JSON-LD válido (Product/Offer/Organization/Breadcrumb) confirmado en el
+          HTML; Offer con precio/COP/InStock.
+        - OG image 200 image/png. `npm run build` OK (rutas SEO generadas).
+      - Nota: Rich Results Test y Lighthouse/Core Web Vitals deben ejecutarse con
+        el sitio desplegado (no hay tooling en este entorno); se aplicaron buenas
+        prácticas (canonical, OG, WebP/lazy, sin CLS por aspect-ratio, font swap).
+
+
 - [x] M8 Admin operativo — 2026-09-22
       - App `accounting`: Expense y SupplierInvoice + admin (migración 0001).
       - App `backoffice` (sin modelos): reports.py (sales_summary, product_
@@ -273,7 +295,8 @@
   si se requiere costo histórico.
 
 ## Próximo paso
-- M9: SEO técnico y rendimiento — URLs amigables (ya), metadatos por producto/
-  categoría, Schema.org (Product/Offer/Organization), sitemap.xml, robots.txt,
-  Open Graph, imágenes WebP + lazy vía Cloudinary, SEO local Bogotá. Validar con
-  Rich Results y Lighthouse (Core Web Vitals).
+- M10: Hardening final, QA y despliegue — cabeceras (HSTS, CSP, X-Frame-Options,
+  X-Content-Type-Options), HTTPS obligatorio, DEBUG off, secretos en env, backups
+  automáticos de la DB, logs de eventos críticos, pip-audit/npm audit, repaso
+  OWASP Top 10, suite de flujos críticos, y despliegue (backend+DB en Docker,
+  frontend en Vercel).

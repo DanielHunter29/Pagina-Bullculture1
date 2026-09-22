@@ -13,12 +13,6 @@ import {
 } from "@/lib/api";
 import { PAGE_SIZE } from "@/lib/catalog";
 
-export const metadata: Metadata = {
-  title: "Catálogo",
-  description:
-    "Explora proteínas, creatina, vitaminas, omega 3 y más. Filtra por categoría, precio y objetivo. Envíos en Colombia.",
-};
-
 // Fuerza render dinámico del lado del servidor (SSR) en cada solicitud.
 export const dynamic = "force-dynamic";
 
@@ -26,6 +20,40 @@ type SP = Record<string, string | string[] | undefined>;
 
 function first(v: string | string[] | undefined): string | undefined {
   return Array.isArray(v) ? v[0] : v;
+}
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<SP>;
+}): Promise<Metadata> {
+  const sp = await searchParams;
+  const category = first(sp.category);
+  const search = first(sp.search);
+
+  let title = "Catálogo";
+  let canonical = "/catalogo";
+
+  if (search) {
+    title = `Resultados para "${search}"`;
+  } else if (category) {
+    canonical = `/catalogo?category=${category}`;
+    try {
+      const categories = await getCategories();
+      const found = categories.find((c) => c.slug === category);
+      if (found) title = found.name;
+    } catch {
+      /* usa el título por defecto */
+    }
+  }
+
+  return {
+    title,
+    description:
+      "Explora proteínas, creatina, vitaminas, omega 3 y más. Filtra por categoría, precio y objetivo. Envíos en toda Colombia.",
+    alternates: { canonical },
+    openGraph: { title: `${title} · BULLCULTURE`, type: "website" },
+  };
 }
 
 export default async function CatalogoPage({

@@ -5,8 +5,10 @@ import { notFound } from "next/navigation";
 import { ProductCard } from "@/components/catalog/ProductCard";
 import { AddToCartButton } from "@/components/product/AddToCartButton";
 import { ProductGallery } from "@/components/product/ProductGallery";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { getProduct } from "@/lib/api";
 import { formatCOP } from "@/lib/format";
+import { breadcrumbSchema, productSchema } from "@/lib/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +31,7 @@ export async function generateMetadata({
   return {
     title: product.name,
     description,
+    alternates: { canonical: `/producto/${product.slug}` },
     openGraph: {
       title: `${product.name} · BULLCULTURE`,
       description,
@@ -47,6 +50,8 @@ export default async function ProductPage({ params }: { params: Params }) {
 
   return (
     <div className="container pb-20 pt-28 md:pt-32">
+      <JsonLd data={productSchema(product)} />
+      <JsonLd data={breadcrumbSchema(product)} />
       {/* Migas de pan */}
       <nav className="mb-6 text-sm text-brand-ink-muted" aria-label="Migas de pan">
         <Link href="/catalogo" className="hover:text-brand-accent-bright">

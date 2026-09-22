@@ -8,6 +8,7 @@ import { Minus, Plus, ShoppingCart, Trash2, X } from "lucide-react";
 import { BullMark } from "@/components/brand/BullMark";
 import { Button } from "@/components/ui/button";
 import { formatCOP } from "@/lib/format";
+import { optimizedImage } from "@/lib/images";
 import { useCart } from "./CartProvider";
 
 export function CartDrawer() {
@@ -100,8 +101,10 @@ export function CartDrawer() {
                           {item.image ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
-                              src={item.image}
+                              src={optimizedImage(item.image, 160)}
                               alt={item.name}
+                              loading="lazy"
+                              decoding="async"
                               className="h-full w-full object-cover"
                             />
                           ) : (

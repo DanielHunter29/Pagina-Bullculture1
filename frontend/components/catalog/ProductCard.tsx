@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BullMark } from "@/components/brand/BullMark";
 import type { Product } from "@/lib/api";
 import { formatCOP } from "@/lib/format";
+import { optimizedImage } from "@/lib/images";
 
 /**
  * Tarjeta de producto (server component).
@@ -21,9 +22,10 @@ export function ProductCard({ product }: { product: Product }) {
         {img ? (
           // eslint-disable-next-line @next/next/no-img-element -- Cloudinary/next-image se integra en M9
           <img
-            src={img.image_url}
+            src={optimizedImage(img.image_url, 600)}
             alt={img.alt_text || product.name}
             loading="lazy"
+            decoding="async"
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (

@@ -2,6 +2,11 @@
  * Configuración central del sitio BULLCULTURE.
  * Ajusta estos valores (número de WhatsApp, redes, correo) a los reales.
  */
+/** URL pública del sitio (para SEO: canonical, sitemap, JSON-LD, OG). */
+export const SITE_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL || "https://bullculture.co"
+).replace(/\/$/, "");
+
 export const site = {
   name: "BULLCULTURE",
   tagline: "SUPPLEMENTS",
