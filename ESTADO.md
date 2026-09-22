@@ -1,9 +1,28 @@
 # ESTADO.md — Memoria de trabajo BULLCULTURE
 
-## Módulo actual: M2 — API de catálogo (DRF)
+## Módulo actual: M3 — Frontend base + design system
 ## Estado: pendiente (esperando confirmación para iniciar)
 
 ## Hitos completados
+- [x] M2 API de catálogo (DRF) — 2026-09-21
+      - `django-filter` 26.1 añadido; `DEFAULT_FILTER_BACKENDS` (filtros + búsqueda
+        + orden) en settings base.
+      - `apps/catalog`: serializers (Category, ProductList, ProductDetail),
+        `ProductFilter` (categoría, price_min/max, objetivo, featured, in_stock),
+        ViewSets de solo lectura (lookup por slug) montados en `/api/`:
+        `/api/categories/` y `/api/products/`.
+      - Stock anotado en el queryset (`Coalesce(Sum(batches__quantity))`) → evita
+        N+1; `select_related`/`prefetch_related` para categoría e imágenes.
+      - Detalle con `available_stock`, imágenes y hasta 4 productos relacionados
+        (misma categoría). NO expone `cost` ni `low_stock_threshold`.
+      - Puntos de control M2 (verificados con 16 tests de API):
+        - Filtros/orden/búsqueda funcionan; paginación = 12 (PAGE_SIZE).
+        - No se exponen campos sensibles (tests explícitos).
+        - CORS: origen del frontend autorizado; origen desconocido bloqueado (tests).
+        - Producto inactivo → 404; lista excluye inactivos.
+      - Suite total: 32 tests OK; `django check` 0 issues; `pip-audit` limpio.
+
+
 - [x] M1 Modelo de datos y admin base — 2026-09-21
       - 3 apps bajo `apps/`: **catalog** (Category, Product, ProductImage, Batch),
         **discounts** (VolumeDiscountRule), **orders** (Order, OrderItem).
@@ -74,8 +93,15 @@
   `eslint.config.mjs` al usar `npm run lint` (no bloquea el build). Revisar en M3.
 - `next lint` está deprecado en Next 16; migrar a ESLint CLI cuando toque.
 
+## API disponible para el frontend (M2)
+- GET /api/categories/  ·  GET /api/categories/{slug}/
+- GET /api/products/    ·  GET /api/products/{slug}/
+  Query params: ?category={slug} &price_min= &price_max= &goal= &in_stock=true
+                &featured=true &search= &ordering=price|-price|name|created_at
+                &page=
+
 ## Próximo paso
-- M2: API de catálogo (DRF) — endpoints de categorías; lista de productos con
-  filtros (categoría, precio, objetivo), orden y buscador; detalle con stock y
-  relacionados; serializers con validación estricta; CORS ya restringido;
-  paginación (PAGE_SIZE=12 ya configurado en base).
+- M3: Frontend base + design system — layout global, header (nav + hamburguesa
+  móvil), footer (TikTok/Instagram/correo), botón flotante de WhatsApp, hero
+  animado (entrada titular+toro, parallax, brillo cuernos #88BEDF), respetando
+  prefers-reduced-motion. Consumirá la API de M2 en M4.
