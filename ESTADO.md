@@ -1,9 +1,25 @@
 # ESTADO.md — Memoria de trabajo BULLCULTURE
 
-## Módulo actual: M7 — Correos transaccionales
+## Módulo actual: M8 — Admin operativo (dashboard, pedidos, inventario, contabilidad)
 ## Estado: pendiente (esperando confirmación para iniciar)
 
 ## Hitos completados
+- [x] M7 Correos transaccionales — 2026-09-22
+      - `apps/orders/emails.py::send_order_confirmation`: idempotente vía
+        reclamación atómica del flag (`filter(email_sent=False).update(email_sent=True)`),
+        revierte si el envío falla (permite reintento). Enganchado en la vista del
+        webhook DESPUÉS de la transacción (no retiene el lock durante el SMTP).
+      - Plantillas `templates/emails/order_confirmation.{html,txt}`: HTML responsivo
+        (tablas + estilos inline, max-width 600) con encabezado de marca, ítems,
+        totales, descuento y dirección de envío.
+      - Settings: `TEMPLATES DIRS`, `DEFAULT_FROM_EMAIL`; prod usa SMTP (Resend
+        o SendGrid) por env; dev = consola, tests = locmem.
+      - Puntos de control M7 (verificados con 4 tests): un correo por pago
+        aprobado; webhook duplicado NO envía otro; pago rechazado no envía;
+        `send_order_confirmation` idempotente. Plantilla renderizada OK (sin tags
+        sin resolver). Suite total 59 OK.
+
+
 - [x] M6 Checkout invitado + WOMPI + webhooks — 2026-09-22
       - Modelo: Order + idempotency_key, stock_deducted, email_sent; nuevo
         WebhookEvent (auditoría). Migración 0002.
@@ -223,6 +239,8 @@
 - Para simular pagos localmente hay secretos WOMPI de PRUEBA en .env (gitignored).
 
 ## Próximo paso
-- M7: Correos transaccionales — enviar correo (Resend/SendGrid) al aprobarse el
-  pago, UNA sola vez por pedido (idempotente vía flag email_sent), enganchado en
-  process_wompi_transaction.
+- M8: Admin operativo — dashboard (ventas día/mes, pedidos pendientes, stock
+  bajo), gestión de pedidos (cambio de estado), inventario (CRUD + lotes +
+  alertas), contabilidad (ingresos/gastos/facturas/rentabilidad, export Excel/PDF),
+  config de reglas de descuento. Login seguro: 2FA, bloqueo por intentos, URL de
+  admin no predecible, rate limiting. Permisos por endpoint.

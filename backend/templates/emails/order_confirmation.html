@@ -1,0 +1,90 @@
+{% autoescape on %}<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirmación de pedido</title>
+</head>
+<body style="margin:0;padding:0;background-color:#eef1f4;font-family:Arial,Helvetica,sans-serif;color:#0A0E14;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef1f4;padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;">
+          <!-- Encabezado -->
+          <tr>
+            <td style="background-color:#0A0E14;padding:28px 32px;">
+              <span style="color:#F8FAFB;font-size:22px;font-weight:bold;letter-spacing:1px;">BULLCULTURE</span>
+              <span style="color:#6C93B6;font-size:11px;letter-spacing:3px;display:block;margin-top:2px;">SUPPLEMENTS</span>
+            </td>
+          </tr>
+
+          <!-- Cuerpo -->
+          <tr>
+            <td style="padding:32px;">
+              <h1 style="margin:0 0 8px;font-size:22px;color:#0A0E14;">¡Pago confirmado!</h1>
+              <p style="margin:0 0 4px;font-size:15px;color:#334155;">Hola {{ order.customer_name }}, gracias por tu compra.</p>
+              <p style="margin:0 0 24px;font-size:14px;color:#64748b;">
+                Pedido <strong style="color:#0A0E14;">{{ order.reference }}</strong>
+              </p>
+
+              <!-- Productos -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                {% for item in items %}
+                <tr>
+                  <td style="padding:12px 0;border-bottom:1px solid #e2e8f0;font-size:14px;color:#0A0E14;">
+                    {{ item.quantity }} &times; {{ item.name }}
+                  </td>
+                  <td align="right" style="padding:12px 0;border-bottom:1px solid #e2e8f0;font-size:14px;color:#0A0E14;white-space:nowrap;">
+                    {{ item.line_total }}
+                  </td>
+                </tr>
+                {% endfor %}
+              </table>
+
+              <!-- Totales -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;border-collapse:collapse;">
+                <tr>
+                  <td style="padding:4px 0;font-size:14px;color:#64748b;">Subtotal</td>
+                  <td align="right" style="padding:4px 0;font-size:14px;color:#64748b;">{{ subtotal }}</td>
+                </tr>
+                {% if discount_amount %}
+                <tr>
+                  <td style="padding:4px 0;font-size:14px;color:#2f6f97;">Descuento ({{ discount_percentage }}%)</td>
+                  <td align="right" style="padding:4px 0;font-size:14px;color:#2f6f97;">&minus;{{ discount_amount }}</td>
+                </tr>
+                {% endif %}
+                <tr>
+                  <td style="padding:12px 0 0;font-size:17px;font-weight:bold;color:#0A0E14;border-top:2px solid #0A0E14;">Total</td>
+                  <td align="right" style="padding:12px 0 0;font-size:17px;font-weight:bold;color:#0A0E14;border-top:2px solid #0A0E14;">{{ total }}</td>
+                </tr>
+              </table>
+
+              <!-- Envío -->
+              <div style="margin-top:28px;padding:16px;background-color:#f1f5f9;border-radius:8px;">
+                <p style="margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#64748b;">Envío a</p>
+                <p style="margin:0;font-size:14px;color:#0A0E14;line-height:1.5;">
+                  {{ order.customer_name }}<br>
+                  {{ order.shipping_address }}<br>
+                  {{ order.shipping_city }}<br>
+                  Tel: {{ order.customer_phone }}
+                </p>
+              </div>
+
+              <p style="margin:24px 0 0;font-size:13px;color:#64748b;">
+                Te contactaremos para coordinar la entrega. Si tienes dudas, responde a este correo.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Pie -->
+          <tr>
+            <td style="background-color:#0A0E14;padding:20px 32px;text-align:center;">
+              <p style="margin:0;font-size:12px;color:#A0A8B3;">BULLCULTURE · Bogotá, Colombia</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>{% endautoescape %}

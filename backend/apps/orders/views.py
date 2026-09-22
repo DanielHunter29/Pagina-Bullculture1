@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
+from .emails import send_order_confirmation
 from .models import Order, WebhookEvent
 from .serializers import (
     CartQuoteInputSerializer,
@@ -135,7 +136,13 @@ class WompiWebhookView(APIView):
                 {"detail": "Firma inválida."}, status=status.HTTP_401_UNAUTHORIZED
             )
 
-        process_wompi_transaction(tx)
+        order = process_wompi_transaction(tx)
+
+        # Correo de confirmación (idempotente) tras confirmar el pago. Fuera de
+        # la transacción de BD para no retener el lock durante el envío SMTP.
+        if order and order.payment_status == Order.PaymentStatus.APPROVED:
+            send_order_confirmation(order)
+
         # Siempre 200 ante eventos verificados para que WOMPI no reintente.
         return Response({"received": True}, status=status.HTTP_200_OK)
 

@@ -1,0 +1,25 @@
+BULLCULTURE — Confirmación de pedido
+
+Hola {{ order.customer_name }},
+
+¡Gracias por tu compra! Recibimos tu pago y tu pedido está confirmado.
+
+Pedido: {{ order.reference }}
+
+Productos:
+{% for item in items %}- {{ item.quantity }} x {{ item.name }} — {{ item.line_total }}
+{% endfor %}
+Subtotal: {{ subtotal }}
+{% if discount_amount %}Descuento ({{ discount_percentage }}%): -{{ discount_amount }}
+{% endif %}Total: {{ total }}
+
+Envío a:
+{{ order.customer_name }}
+{{ order.shipping_address }}
+{{ order.shipping_city }}
+Tel: {{ order.customer_phone }}
+
+Te contactaremos para coordinar la entrega.
+
+Gracias por entrenar con BULLCULTURE.
+Bogotá, Colombia.

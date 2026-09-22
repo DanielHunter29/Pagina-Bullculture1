@@ -69,7 +69,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -149,6 +149,13 @@ CORS_ALLOW_CREDENTIALS = True
 
 # --- URL pública del frontend (para redirecciones de pago) ---
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
+
+# --- Correo transaccional (M7) ---
+# Dev usa consola (dev.py) y tests usan locmem (test.py). En producción se usa
+# SMTP (Resend o SendGrid) configurado por variables de entorno en prod.py.
+DEFAULT_FROM_EMAIL = env(
+    "DEFAULT_FROM_EMAIL", default="BULLCULTURE <no-reply@bullculture.co>"
+)
 
 # --- Pasarela de pagos WOMPI (M6) ---
 WOMPI = {
