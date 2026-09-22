@@ -61,6 +61,8 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # sirve estáticos en producción
+    "apps.common.middleware.SecurityHeadersMiddleware",  # CSP, Permissions-Policy
     "corsheaders.middleware.CorsMiddleware",  # antes de CommonMiddleware
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",

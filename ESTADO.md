@@ -1,9 +1,30 @@
 # ESTADO.md — Memoria de trabajo BULLCULTURE
 
-## Módulo actual: M10 — Hardening final, QA y despliegue
-## Estado: pendiente (esperando confirmación para iniciar)
+## Módulo actual: — PROYECTO COMPLETO (M0–M10)
+## Estado: listo para revisión / despliegue
 
 ## Hitos completados
+- [x] M10 Hardening final, QA y despliegue — 2026-09-22
+      - Cabeceras de seguridad: middleware propio (`apps/common/middleware.py`)
+        con CSP + Permissions-Policy + COOP + nosniff en el backend; en el
+        frontend, CSP + HSTS + X-Frame-Options + Referrer/Permissions-Policy en
+        `next.config.mjs` (verificadas en vivo). HSTS/SSL/cookies seguras en prod.
+      - whitenoise para servir estáticos del admin en el contenedor
+        (CompressedManifestStaticFilesStorage en prod).
+      - Logs de eventos críticos: pagos e inventario (services), accesos al admin
+        (señales user_logged_in/failed en `backoffice/signals.py`), axes; loggers
+        configurados en prod.
+      - Backups automáticos: `scripts/backup_db.sh` (pg_dump + gzip + retención 14)
+        y servicio `db_backup` en `docker-compose.prod.yml`.
+      - `docker-compose.prod.yml` (db + backend gunicorn con collectstatic/migrate
+        + db_backup) y `DEPLOY.md` (pasos Vercel/Docker + checklist OWASP Top 10).
+      - Puntos de control M10 (verificados):
+        - `check --deploy` (prod) → 0 issues; DEBUG off; secretos en env.
+        - Cabeceras presentes en backend y frontend (curl); errores sin trazas.
+        - Suite 66 tests OK; `pip-audit` y `npm audit` sin vulnerabilidades.
+        - compose de prod y script de backup validados; CSP no rompe el render.
+
+
 - [x] M9 SEO técnico y rendimiento — 2026-09-22
       - Metadatos: layout con OpenGraph/Twitter/keywords/canonical; catálogo con
         `generateMetadata` dinámico (título por categoría/búsqueda + canonical);
@@ -295,8 +316,7 @@
   si se requiere costo histórico.
 
 ## Próximo paso
-- M10: Hardening final, QA y despliegue — cabeceras (HSTS, CSP, X-Frame-Options,
-  X-Content-Type-Options), HTTPS obligatorio, DEBUG off, secretos en env, backups
-  automáticos de la DB, logs de eventos críticos, pip-audit/npm audit, repaso
-  OWASP Top 10, suite de flujos críticos, y despliegue (backend+DB en Docker,
-  frontend en Vercel).
+- Proyecto completo (M0–M10). Antes de producción: (1) `docker compose up` en vivo
+  con Docker Desktop para validar concurrencia (select_for_update en Postgres);
+  (2) claves reales de WOMPI, Cloudinary y SMTP; (3) Rich Results Test + Lighthouse
+  con el sitio desplegado; (4) activar ADMIN_2FA_ENABLED y enrolar 2FA.

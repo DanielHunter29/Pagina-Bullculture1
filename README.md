@@ -31,7 +31,8 @@ cp .env.example .env
 # 2. Backend + base de datos (requiere Docker Desktop abierto)
 docker compose up --build
 #   API:   http://localhost:8000/api/health/
-#   Admin: http://localhost:8000/admin/
+#   Admin: http://localhost:8000/gestion/   (ruta configurable con ADMIN_URL)
+#   Panel: http://localhost:8000/gestion/panel/   (dashboard, staff)
 
 # 3. Frontend (en otra terminal)
 cd frontend
@@ -57,9 +58,21 @@ npm run dev
 └── ESTADO.md           # Memoria de trabajo / progreso por módulos
 ```
 
+## Despliegue
+
+Backend + PostgreSQL en Docker (`docker-compose.prod.yml`) y frontend en Vercel.
+Guía completa y checklist OWASP en [`DEPLOY.md`](./DEPLOY.md).
+
 ## Seguridad
 
 - Secretos solo en variables de entorno (`.env` está en `.gitignore`).
-- `DEBUG` desactivado en producción; cabeceras de seguridad en `config/settings/prod.py`.
-- CORS restringido al dominio del frontend.
+- `DEBUG` off en producción; cabeceras (HSTS, CSP, X-Frame-Options, nosniff,
+  Permissions-Policy) en backend y frontend.
+- URL de admin no predecible (`ADMIN_URL`), 2FA (TOTP), bloqueo por intentos
+  (django-axes) y rate limiting en checkout/carrito.
+- Pagos WOMPI con firma de integridad y verificación de checksum de webhooks;
+  importes calculados en backend; idempotencia de pedido/cobro/stock/correo.
+- CORS restringido al dominio del frontend; Habeas Data (Ley 1581) en checkout.
+- Backups automáticos de la DB; logs de pagos, inventario y accesos al admin.
 - Dependencias auditadas con `pip-audit` y `npm audit` (0 vulnerabilidades).
+- Suite de pruebas de flujos críticos (66 tests).

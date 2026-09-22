@@ -36,6 +36,14 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 SECURE_REFERRER_POLICY = "same-origin"
 
+# --- Estáticos comprimidos y versionados (whitenoise) ---
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    },
+}
+
 # --- Correo transaccional (SMTP: Resend o SendGrid) ---
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = env("EMAIL_HOST", default="smtp.resend.com")
@@ -65,5 +73,10 @@ LOGGING = {
     "root": {"handlers": ["console"], "level": "INFO"},
     "loggers": {
         "django.security": {"handlers": ["console"], "level": "WARNING", "propagate": False},
+        # Eventos críticos del negocio: pagos, inventario, etc.
+        "apps": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        # Accesos al admin y seguridad (señales de login, axes).
+        "bullculture.security": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "axes": {"handlers": ["console"], "level": "INFO", "propagate": False},
     },
 }

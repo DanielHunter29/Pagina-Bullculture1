@@ -163,6 +163,7 @@ def deduct_stock(order):
 
     order.stock_deducted = True
     order.save(update_fields=["stock_deducted", "updated_at"])
+    logger.info("Inventario: stock descontado para pedido %s", order.reference)
 
 
 # Mapa de estados de WOMPI → estados del pedido.
@@ -223,9 +224,13 @@ def process_wompi_transaction(transaction_data: dict):
     if new_status == Order.PaymentStatus.APPROVED:
         order.paid_at = timezone.now()
         order.save()
+        logger.info(
+            "Pago APROBADO: pedido %s por %s (tx %s)", order.reference, order.total, tx_id
+        )
         deduct_stock(order)
-        # El envío de correo (idempotente) se conecta en M7.
+        # El correo de confirmación (idempotente) se envía en la vista del webhook.
     else:
         order.save()
+        logger.info("Pago %s: pedido %s (tx %s)", new_status, order.reference, tx_id)
 
     return order
