@@ -6,6 +6,12 @@ psycopg[binary]==3.3.6
 django-environ==0.14.0
 django-cors-headers==4.9.0
 
+# --- Admin operativo (M8): seguridad y reportes ---
+django-axes==8.3.1
+django-otp==1.7.3
+openpyxl==3.1.5
+reportlab==5.0.1
+
 # --- Servidor de producción ---
 gunicorn==26.2.0
 

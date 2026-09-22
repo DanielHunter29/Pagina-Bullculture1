@@ -36,12 +36,16 @@ DJANGO_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.humanize",
 ]
 
 THIRD_PARTY_APPS = [
     "rest_framework",
     "django_filters",
     "corsheaders",
+    "axes",  # bloqueo por intentos fallidos de login
+    "django_otp",  # 2FA (TOTP)
+    "django_otp.plugins.otp_totp",
 ]
 
 # Apps propias del proyecto.
@@ -49,6 +53,8 @@ LOCAL_APPS = [
     "apps.catalog",
     "apps.discounts",
     "apps.orders",
+    "apps.accounting",
+    "apps.backoffice",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -60,8 +66,17 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django_otp.middleware.OTPMiddleware",  # tras autenticación (2FA)
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # AxesMiddleware debe ir al final.
+    "axes.middleware.AxesMiddleware",
+]
+
+# --- Backends de autenticación (django-axes primero) ---
+AUTHENTICATION_BACKENDS = [
+    "axes.backends.AxesStandaloneBackend",
+    "django.contrib.auth.backends.ModelBackend",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -156,6 +171,25 @@ FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
 DEFAULT_FROM_EMAIL = env(
     "DEFAULT_FROM_EMAIL", default="BULLCULTURE <no-reply@bullculture.co>"
 )
+
+# --- Admin operativo (M8) ---
+# URL del admin NO predecible: definir en producción vía variable de entorno.
+# Debe terminar en "/" y no empezar con "/".
+ADMIN_URL = env("ADMIN_URL", default="gestion/")
+
+# Umbral por defecto para alertas de stock bajo (además del de cada producto).
+LOW_STOCK_THRESHOLD = env.int("LOW_STOCK_THRESHOLD", default=5)
+
+# 2FA del admin (TOTP). Desactivado por defecto para no bloquear en desarrollo;
+# actívalo en producción y enrola un dispositivo con `manage.py setup_2fa`.
+ADMIN_2FA_ENABLED = env.bool("ADMIN_2FA_ENABLED", default=False)
+
+# --- django-axes: bloqueo tras intentos fallidos de login ---
+AXES_ENABLED = env.bool("AXES_ENABLED", default=True)
+AXES_FAILURE_LIMIT = env.int("AXES_FAILURE_LIMIT", default=5)
+AXES_COOLOFF_TIME = env.int("AXES_COOLOFF_HOURS", default=1)  # horas
+AXES_RESET_ON_SUCCESS = True
+AXES_LOCKOUT_PARAMETERS = [["username", "ip_address"]]
 
 # --- Pasarela de pagos WOMPI (M6) ---
 WOMPI = {

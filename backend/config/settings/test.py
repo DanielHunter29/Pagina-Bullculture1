@@ -18,3 +18,7 @@ DATABASES = {
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+
+# django-axes desactivado en pruebas (evita interferir con el login de tests).
+AXES_ENABLED = False
+ADMIN_2FA_ENABLED = False

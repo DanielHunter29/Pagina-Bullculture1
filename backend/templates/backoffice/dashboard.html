@@ -1,0 +1,127 @@
+{% load humanize %}<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title }}</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: #0A0E14; color: #F8FAFB; }
+    a { color: #88BEDF; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
+    header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+    h1 { font-size: 22px; margin: 0; letter-spacing: .5px; }
+    .muted { color: #A0A8B3; }
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-top: 24px; }
+    .card { background: #14171D; border: 1px solid #232C36; border-radius: 12px; padding: 18px; }
+    .card .label { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #6C93B6; }
+    .card .value { font-size: 26px; font-weight: 700; margin-top: 6px; }
+    .card .sub { font-size: 13px; color: #A0A8B3; margin-top: 4px; }
+    section { margin-top: 32px; }
+    section h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 1px; color: #6C93B6; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #232C36; }
+    th { color: #A0A8B3; font-weight: 600; font-size: 12px; text-transform: uppercase; }
+    .alert { border-color: #88BEDF; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; background: #131E28; color: #88BEDF; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; background: #14171D;
+      border: 1px solid #232C36; border-radius: 12px; padding: 16px; margin-top: 24px; }
+    .toolbar label { display: block; font-size: 12px; color: #A0A8B3; margin-bottom: 4px; }
+    .toolbar input { background: #0A0E14; border: 1px solid #232C36; color: #F8FAFB; border-radius: 8px; padding: 8px; }
+    .btn { background: #6C93B6; color: #0A0E14; border: 0; border-radius: 8px; padding: 9px 14px; font-weight: 700; cursor: pointer; }
+    .btn.secondary { background: transparent; border: 1px solid #232C36; color: #F8FAFB; }
+    .empty { color: #A0A8B3; font-size: 14px; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>BULLCULTURE · Dashboard</h1>
+      <a href="../" class="pill">Ir al admin</a>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <div class="label">Ventas hoy</div>
+        <div class="value">$ {{ metrics.today.revenue|floatformat:0|intcomma }}</div>
+        <div class="sub">{{ metrics.today.orders_count }} pedidos · {{ metrics.today.units_sold }} uds.</div>
+      </div>
+      <div class="card">
+        <div class="label">Ventas del mes</div>
+        <div class="value">$ {{ metrics.month.revenue|floatformat:0|intcomma }}</div>
+        <div class="sub">{{ metrics.month.orders_count }} pedidos · {{ metrics.month.units_sold }} uds.</div>
+      </div>
+      <div class="card">
+        <div class="label">Pedidos por preparar</div>
+        <div class="value">{{ metrics.pending_orders }}</div>
+        <div class="sub">pagados, pendientes de envío</div>
+      </div>
+      <div class="card {% if metrics.low_stock %}alert{% endif %}">
+        <div class="label">Alertas de stock bajo</div>
+        <div class="value">{{ metrics.low_stock|length }}</div>
+        <div class="sub">productos por reponer</div>
+      </div>
+    </div>
+
+    <!-- Exportes -->
+    <form class="toolbar" method="get">
+      <div>
+        <label for="desde">Desde</label>
+        <input type="date" id="desde" name="desde" value="{{ request.GET.desde }}">
+      </div>
+      <div>
+        <label for="hasta">Hasta</label>
+        <input type="date" id="hasta" name="hasta" value="{{ request.GET.hasta }}">
+      </div>
+      <button class="btn" formaction="{% url 'backoffice:export-xlsx' %}">Exportar Excel</button>
+      <button class="btn secondary" formaction="{% url 'backoffice:export-pdf' %}">Exportar PDF</button>
+    </form>
+
+    <!-- Alertas de stock -->
+    <section>
+      <h2>Stock bajo</h2>
+      {% if metrics.low_stock %}
+      <table>
+        <thead><tr><th>Producto</th><th>Disponible</th><th>Umbral</th></tr></thead>
+        <tbody>
+          {% for p in metrics.low_stock %}
+          <tr>
+            <td>{{ p.name }}</td>
+            <td><span class="pill">{{ p.stock }}</span></td>
+            <td>{{ p.low_stock_threshold }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="empty">Todo el inventario está por encima del umbral. 💪</p>
+      {% endif %}
+    </section>
+
+    <!-- Pedidos recientes -->
+    <section>
+      <h2>Pedidos recientes</h2>
+      {% if recent_orders %}
+      <table>
+        <thead><tr><th>Referencia</th><th>Cliente</th><th>Total</th><th>Pago</th><th>Envío</th></tr></thead>
+        <tbody>
+          {% for o in recent_orders %}
+          <tr>
+            <td>{{ o.reference }}</td>
+            <td>{{ o.customer_name }}</td>
+            <td>$ {{ o.total|floatformat:0|intcomma }}</td>
+            <td>{{ o.get_payment_status_display }}</td>
+            <td>{{ o.get_fulfillment_status_display }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="empty">Aún no hay pedidos.</p>
+      {% endif %}
+    </section>
+  </div>
+</body>
+</html>

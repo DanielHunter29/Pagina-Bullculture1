@@ -1,9 +1,33 @@
 # ESTADO.md — Memoria de trabajo BULLCULTURE
 
-## Módulo actual: M8 — Admin operativo (dashboard, pedidos, inventario, contabilidad)
+## Módulo actual: M9 — SEO técnico y rendimiento
 ## Estado: pendiente (esperando confirmación para iniciar)
 
 ## Hitos completados
+- [x] M8 Admin operativo — 2026-09-22
+      - App `accounting`: Expense y SupplierInvoice + admin (migración 0001).
+      - App `backoffice` (sin modelos): reports.py (sales_summary, product_
+        profitability, expenses_summary, low_stock_products, dashboard_metrics),
+        vista de **dashboard** staff-only + template responsivo (ventas hoy/mes,
+        pedidos por preparar, alertas de stock bajo, pedidos recientes) y
+        **exportes Excel (openpyxl) y PDF (reportlab)** por rango de fechas.
+      - Comandos: `check_low_stock` (alerta) y `setup_2fa <usuario>` (enrola TOTP).
+      - Admin de Django como panel: Order (cambio de estado), inventario
+        (Product/Batch), reglas de descuento, contabilidad — todo registrado.
+      - Seguridad: **URL de admin no predecible** (ADMIN_URL env, default /gestion/);
+        **django-axes** (bloqueo tras 5 intentos, cooloff 1h); **2FA TOTP**
+        (django-otp; OTPAdminSite activable por ADMIN_2FA_ENABLED para no bloquear
+        dev); rate limiting de checkout/carrito ya en M5/M6.
+      - Puntos de control M8 (7 tests + verificación en vivo):
+        - Permisos: dashboard/exports requieren staff (anónimo y no-staff → 302).
+        - Exports: Excel con 3 hojas (parseable), PDF válido (%PDF).
+        - Alertas de stock: low_stock_products correcto; visible en dashboard.
+        - Rentabilidad por producto correcta (ingresos−costo).
+        - En vivo (logueado como jefe): dashboard con datos reales del pedido
+          aprobado; admin en /gestion/ (URL no predecible); dashboard responsivo
+          escritorio/móvil. Suite total 66 OK; pip-audit limpio.
+
+
 - [x] M7 Correos transaccionales — 2026-09-22
       - `apps/orders/emails.py::send_order_confirmation`: idempotente vía
         reclamación atómica del flag (`filter(email_sent=False).update(email_sent=True)`),
@@ -238,9 +262,18 @@
   hook en process_wompi_transaction).
 - Para simular pagos localmente hay secretos WOMPI de PRUEBA en .env (gitignored).
 
+## Notas M8 / deuda técnica
+- La URL del admin ahora es /gestion/ por defecto (antes /admin/). En prod,
+  definir ADMIN_URL con un valor aleatorio propio.
+- 2FA desactivado por defecto (ADMIN_2FA_ENABLED=False) para no bloquear dev;
+  activarlo en prod y enrolar con `manage.py setup_2fa <usuario>`.
+- Superusuario local de prueba: jefe / BullAdmin2026! (solo en la BD sqlite local,
+  no versionada).
+- Rentabilidad usa el costo ACTUAL del producto (no snapshot al vender); revisar
+  si se requiere costo histórico.
+
 ## Próximo paso
-- M8: Admin operativo — dashboard (ventas día/mes, pedidos pendientes, stock
-  bajo), gestión de pedidos (cambio de estado), inventario (CRUD + lotes +
-  alertas), contabilidad (ingresos/gastos/facturas/rentabilidad, export Excel/PDF),
-  config de reglas de descuento. Login seguro: 2FA, bloqueo por intentos, URL de
-  admin no predecible, rate limiting. Permisos por endpoint.
+- M9: SEO técnico y rendimiento — URLs amigables (ya), metadatos por producto/
+  categoría, Schema.org (Product/Offer/Organization), sitemap.xml, robots.txt,
+  Open Graph, imágenes WebP + lazy vía Cloudinary, SEO local Bogotá. Validar con
+  Rich Results y Lighthouse (Core Web Vitals).
