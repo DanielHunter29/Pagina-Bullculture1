@@ -1,0 +1,44 @@
+# === Secretos y entorno (NUNCA se versionan) ===
+.env
+.env.*
+# ...pero SÍ versionamos las plantillas de ejemplo:
+!*.example
+*.pem
+*.key
+
+# === Python / Django ===
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+*.sqlite3
+/backend/staticfiles/
+/backend/media/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# === Node / Next.js ===
+node_modules/
+/frontend/.next/
+/frontend/out/
+/frontend/build/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+
+# === Docker ===
+/postgres_data/
+
+# === Editores / SO ===
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+
+# === Auditorías ===
+pip-audit.json
+npm-audit.json

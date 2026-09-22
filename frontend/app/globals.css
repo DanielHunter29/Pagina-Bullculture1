@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * BULLCULTURE — Variables de tema.
+ * :root = tema claro (secciones ivory).  .dark = tema oscuro (por defecto).
+ * Los valores están en HSL (formato que espera shadcn/ui) y corresponden a
+ * la paleta oficial de la sección 4.1.
+ */
+@layer base {
+  :root {
+    --background: 210 20% 98%; /* #F8FAFB */
+    --foreground: 216 33% 6%; /* #0A0E14 */
+    --card: 0 0% 100%;
+    --card-foreground: 216 33% 6%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 216 33% 6%;
+    --primary: 208 34% 45%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 210 20% 94%;
+    --secondary-foreground: 216 33% 10%;
+    --muted: 210 20% 94%;
+    --muted-foreground: 215 15% 40%;
+    --accent: 208 34% 57%; /* #6C93B6 */
+    --accent-foreground: 216 33% 6%;
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 214 20% 88%;
+    --input: 214 20% 88%;
+    --ring: 203 58% 70%; /* #88BEDF */
+    --radius: 0.5rem; /* ~8px */
+  }
+
+  .dark {
+    --background: 216 33% 6%; /* #0A0E14 */
+    --foreground: 210 20% 98%; /* #F8FAFB */
+    --card: 220 18% 10%; /* #14171D */
+    --card-foreground: 210 20% 98%;
+    --popover: 220 18% 10%;
+    --popover-foreground: 210 20% 98%;
+    --primary: 208 34% 57%; /* #6C93B6 */
+    --primary-foreground: 216 33% 6%;
+    --secondary: 209 36% 12%; /* #131E28 */
+    --secondary-foreground: 210 20% 98%;
+    --muted: 209 30% 14%;
+    --muted-foreground: 215 11% 66%; /* #A0A8B3 */
+    --accent: 203 58% 70%; /* #88BEDF */
+    --accent-foreground: 216 33% 6%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 212 21% 17%; /* #232C36 */
+    --input: 212 21% 17%;
+    --ring: 203 58% 70%; /* #88BEDF */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  /* Eyebrow / subtítulos: mayúsculas, acento, tracking amplio (4.1). */
+  .eyebrow {
+    @apply text-brand-accent uppercase tracking-[0.2em] text-sm font-semibold;
+  }
+}
+
+/* Accesibilidad: respeta "movimiento reducido" en todo el sitio. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

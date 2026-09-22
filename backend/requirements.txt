@@ -1,0 +1,12 @@
+# --- Núcleo ---
+Django==6.1.1
+djangorestframework==3.18.1
+psycopg[binary]==3.3.6
+django-environ==0.14.0
+django-cors-headers==4.9.0
+
+# --- Servidor de producción ---
+gunicorn==26.2.0
+
+# --- Calidad / seguridad (dev) ---
+pip-audit==2.7.3
