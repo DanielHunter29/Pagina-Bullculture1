@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Order, OrderItem
+from .models import Order, OrderItem, WebhookEvent
 
 
 class OrderItemInline(admin.TabularInline):
@@ -81,3 +81,15 @@ class OrderAdmin(admin.ModelAdmin):
         # Tras guardar los ítems inline, recalcular los totales en el backend.
         super().save_related(request, form, formsets, change)
         form.instance.recalculate_totals()
+
+
+@admin.register(WebhookEvent)
+class WebhookEventAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "reference", "status", "checksum_valid", "transaction_id")
+    list_filter = ("checksum_valid", "status")
+    search_fields = ("reference", "transaction_id")
+    readonly_fields = ("transaction_id", "reference", "status", "checksum_valid", "created_at", "updated_at")
+
+    def has_add_permission(self, request):
+        return False  # solo se crean por webhook
+

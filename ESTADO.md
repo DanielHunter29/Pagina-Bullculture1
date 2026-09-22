@@ -1,9 +1,34 @@
 # ESTADO.md — Memoria de trabajo BULLCULTURE
 
-## Módulo actual: M6 — Checkout invitado + WOMPI + webhooks
+## Módulo actual: M7 — Correos transaccionales
 ## Estado: pendiente (esperando confirmación para iniciar)
 
 ## Hitos completados
+- [x] M6 Checkout invitado + WOMPI + webhooks — 2026-09-22
+      - Modelo: Order + idempotency_key, stock_deducted, email_sent; nuevo
+        WebhookEvent (auditoría). Migración 0002.
+      - `apps/orders/wompi.py`: firma de integridad (SHA256) y verificación de
+        checksum de eventos (hmac.compare_digest, tiempo constante).
+      - `services.py`: check_stock, create_order (idempotente por clave),
+        deduct_stock (FEFO, select_for_update), process_wompi_transaction
+        (idempotente, valida monto vs total, máquina de estados).
+      - Endpoints: POST /api/checkout/ (valida datos + Ley 1581, revalida stock
+        → 409, crea pedido, firma integridad), POST /api/webhooks/wompi/
+        (verifica firma; 401 si inválida), GET /api/orders/<ref>/ (estado, sin PII).
+        Vistas con authentication_classes=[] (sin CSRF de sesión).
+      - Frontend: /checkout (formulario responsivo + casilla Ley 1581 + resumen
+        del backend → redirige al Web Checkout de WOMPI; idempotency_key por
+        intento; botón deshabilitado hasta aceptar datos) y /checkout/resultado
+        (consulta estado por referencia, limpia carrito si aprobado).
+      - Puntos de control M6 (verificados en tests + EN VIVO):
+        - Firma inválida → rechazada (401). Duplicado/doble → NO duplica pedido,
+          cobro ni stock (idempotencia por clave + estado + flag).
+        - En vivo: checkout BC-... total 256.215 (3×creatina −5%) → webhook
+          aprobado descontó 40→37; webhook repetido dejó 37; firma mala → 401.
+        - 13 tests nuevos (firmas, webhooks dup/inválidos, monto, stock, Ley 1581,
+          idempotencia). Suite total 55 OK. Responsivo (escritorio/móvil) OK.
+
+
 - [x] M5 Carrito + descuento por volumen — 2026-09-22
       - Backend: `apps/orders/services.py::quote_cart` (fuente de verdad de
         importes, Decimal) + endpoint `POST /api/cart/quote/` (AllowAny, throttle
@@ -188,10 +213,16 @@
   (migrate + seed_demo + runserver) y frontend `npm run dev` (usa NEXT_PUBLIC_API_URL
   / API_URL, con fallback a http://localhost:8000/api).
 
+## Notas M6 / deuda técnica
+- `select_for_update` es no-op en SQLite (dev/tests); bloquea de verdad en
+  PostgreSQL (prod/Docker). Correr con Docker para validar concurrencia (M10).
+- El webhook no tiene throttle (lo llama WOMPI; evitar bloquear reintentos).
+  Considerar allowlist de IP de WOMPI en M10.
+- Correo transaccional al aprobar: pendiente M7 (ya existe flag email_sent y el
+  hook en process_wompi_transaction).
+- Para simular pagos localmente hay secretos WOMPI de PRUEBA en .env (gitignored).
+
 ## Próximo paso
-- M6: Checkout invitado + WOMPI + webhooks — formulario de invitado (nombre,
-  cédula, teléfono, correo, dirección, ciudad, notas) + casilla Ley 1581;
-  crear Pedido con referencia única; firma de integridad WOMPI en backend;
-  webhook con verificación de checksum (aprobado/rechazado/pendiente);
-  descuento de stock con select_for_update + revalidación; idempotencia.
-  El botón "Ir a pagar" del carrito ya apunta a /checkout (crear la página).
+- M7: Correos transaccionales — enviar correo (Resend/SendGrid) al aprobarse el
+  pago, UNA sola vez por pedido (idempotente vía flag email_sent), enganchado en
+  process_wompi_transaction.

@@ -53,6 +53,15 @@ class Order(TimeStampedModel):
         default=generate_order_reference,
         editable=False,
     )
+    # Clave de idempotencia (evita pedidos duplicados por doble clic).
+    idempotency_key = models.CharField(
+        "Clave de idempotencia",
+        max_length=64,
+        unique=True,
+        null=True,
+        blank=True,
+        editable=False,
+    )
 
     # --- Datos del cliente invitado (checkout M6) ---
     customer_name = models.CharField("Nombre del cliente", max_length=150)
@@ -113,6 +122,10 @@ class Order(TimeStampedModel):
         "ID de transacción WOMPI", max_length=64, blank=True
     )
     payment_method = models.CharField("Método de pago", max_length=40, blank=True)
+
+    # --- Flags de idempotencia de efectos secundarios ---
+    stock_deducted = models.BooleanField("Stock descontado", default=False)
+    email_sent = models.BooleanField("Correo enviado", default=False)
 
     class Meta:
         verbose_name = "Pedido"
@@ -188,3 +201,20 @@ class OrderItem(TimeStampedModel):
                 self.unit_price = self.product.price
         self.line_total = quantize_money(self.unit_price * self.quantity)
         super().save(*args, **kwargs)
+
+
+class WebhookEvent(TimeStampedModel):
+    """Registro de auditoría de los eventos de WOMPI recibidos."""
+
+    transaction_id = models.CharField("ID de transacción", max_length=64, blank=True)
+    reference = models.CharField("Referencia", max_length=40, blank=True)
+    status = models.CharField("Estado", max_length=20, blank=True)
+    checksum_valid = models.BooleanField("Checksum válido", default=False)
+
+    class Meta:
+        verbose_name = "Evento de webhook"
+        verbose_name_plural = "Eventos de webhook"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.reference} · {self.status} ({'ok' if self.checksum_valid else 'inválido'})"

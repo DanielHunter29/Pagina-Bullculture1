@@ -147,4 +147,18 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = env("CORS_ALLOWED_ORIGINS")
 CORS_ALLOW_CREDENTIALS = True
 
+# --- URL pública del frontend (para redirecciones de pago) ---
+FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
+
+# --- Pasarela de pagos WOMPI (M6) ---
+WOMPI = {
+    "PUBLIC_KEY": env("WOMPI_PUBLIC_KEY", default=""),
+    "PRIVATE_KEY": env("WOMPI_PRIVATE_KEY", default=""),
+    "EVENTS_SECRET": env("WOMPI_EVENTS_SECRET", default=""),
+    "INTEGRITY_SECRET": env("WOMPI_INTEGRITY_SECRET", default=""),
+    "CURRENCY": "COP",
+    # Web Checkout de WOMPI (redirección).
+    "CHECKOUT_URL": env("WOMPI_CHECKOUT_URL", default="https://checkout.wompi.co/p/"),
+}
+
 # En dev el navegador puede renderizar la API; el renderer HTML se añade en dev.py
