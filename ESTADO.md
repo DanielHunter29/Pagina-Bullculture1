@@ -1,9 +1,32 @@
 # ESTADO.md — Memoria de trabajo BULLCULTURE
 
-## Módulo actual: M4 — Catálogo y detalle de producto (SSR)
+## Módulo actual: M5 — Carrito + descuento por volumen
 ## Estado: pendiente (esperando confirmación para iniciar)
 
 ## Hitos completados
+- [x] M4 Catálogo y detalle de producto (SSR) — 2026-09-22
+      - `lib/api.ts` (cliente tipado, fetch `no-store` = SSR), `lib/format.ts`
+        (COP) y `lib/catalog.ts` (goals/orderings).
+      - Página `/catalogo` (Server Component, `force-dynamic`): lee searchParams
+        → API M2; sidebar de filtros (CatalogFilters, cliente: categoría, precio,
+        objetivo, in_stock, búsqueda debounced, orden) que actualiza la URL;
+        grilla de ProductCard (microinteracciones CSS) + Pagination que preserva
+        filtros. Estados de error y vacío.
+      - Página `/producto/[slug]` (SSR + `generateMetadata` con Open Graph):
+        galería (cliente, miniaturas), precio, stock, presentación, breadcrumb,
+        AddToCartButton (UI lista; carrito real en M5) y relacionados.
+      - `loading.tsx` (skeletons) y `not-found.tsx` con estilo de marca.
+      - Backend: `config.settings.dev_sqlite` (correr sin Docker) y comando
+        `seed_demo` (9 categorías, 14 productos, lotes e imágenes demo).
+      - Puntos de control M4 (verificados):
+        - **SSR real**: curl a /catalogo y /producto/... muestra nombres, precios
+          y "Descripción/relacionados" en el HTML crudo (sin ejecutar JS).
+        - Filtros/orden/búsqueda contra la API; paginación preserva filtros.
+        - Responsivo: escritorio (sidebar + grilla 3 col) y móvil (filtros
+          apilados + grilla 2 col) verificados en el navegador.
+        - `tsc --noEmit` 0 errores; 32 tests backend OK.
+
+
 - [x] M3 Frontend base + design system — 2026-09-21
       - Layout global con Header + Footer + botón flotante de WhatsApp.
       - `components/brand`: BullMark (arte OFICIAL del toro del usuario) y Logo
@@ -134,9 +157,17 @@
 - Lighthouse NO se ejecutó (sin tooling en este entorno); correrlo en M9/M10 con
   contenido real. Se aplicaron buenas prácticas (HTML semántico, aria-labels,
   font-display swap, sin CLS por dimensiones fijas, rel=noopener en externos).
-- navLinks/CTAs apuntan a /catalogo(?category=) que se implementa en M4.
+- navLinks/CTAs apuntan a /catalogo(?category=) — ya implementado en M4.
+- Imágenes de producto vía <img> (URLField); migrar a next/image + Cloudinary
+  (WebP/lazy) en M9. Datos demo usan picsum como placeholder.
+- Sin tests e2e de frontend (SSR verificado con curl + navegador); evaluar
+  Playwright en M10.
+- Para correr sin Docker: backend con `DJANGO_SETTINGS_MODULE=config.settings.dev_sqlite`
+  (migrate + seed_demo + runserver) y frontend `npm run dev` (usa NEXT_PUBLIC_API_URL
+  / API_URL, con fallback a http://localhost:8000/api).
 
 ## Próximo paso
-- M4: Catálogo y detalle de producto con SSR — página /catalogo (filtros/búsqueda
-  contra la API M2) con tarjetas de producto y microinteracciones; /producto/[slug]
-  con fotos, descripción, precio, stock y relacionados; render del lado del servidor.
+- M5: Carrito + descuento por volumen — carrito persistente (sobrevive al
+  recargar), descuento automático por volumen calculado SOLO en backend (reglas
+  configurables en admin), animación al agregar, y pruebas unitarias del cálculo.
+  Conectar AddToCartButton (ya listo en UI).
