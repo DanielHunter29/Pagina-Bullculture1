@@ -1,9 +1,37 @@
 # ESTADO.md — Memoria de trabajo BULLCULTURE
 
-## Módulo actual: M3 — Frontend base + design system
+## Módulo actual: M4 — Catálogo y detalle de producto (SSR)
 ## Estado: pendiente (esperando confirmación para iniciar)
 
 ## Hitos completados
+- [x] M3 Frontend base + design system — 2026-09-21
+      - Layout global con Header + Footer + botón flotante de WhatsApp.
+      - `components/brand`: BullMark (arte OFICIAL del toro del usuario) y Logo
+        horizontal. Variantes "dark" (cara #F8FAFB, fondos oscuros) y "light"
+        (cara #3B5875, secciones claras); cuernos/acentos #6C93B6 con brillo
+        #88BEDF opcional. Paths en `bullArtwork.ts` (generados desde los SVG del
+        usuario, metadata C2PA removida). Favicon `app/icon.svg` (toro sobre
+        fondo oscuro redondeado) y copias limpias en `public/brand/`.
+      - `components/layout/Header`: sticky con estado "scrolled" (blur+borde),
+        nav de escritorio y **menú hamburguesa** animado en móvil (bloquea scroll).
+      - `components/layout/Footer`: enlaces a Instagram, TikTok (icono propio) y
+        correo; navegación y datos de contacto.
+      - `components/layout/WhatsAppButton`: flotante, animado (spring).
+      - `components/sections`: Hero (entrada de titular y toro, **parallax** del
+        toro al scroll, cuernos con brillo pulsante), CategoryHighlights (4
+        categorías con reveal al scroll), ScienceSection (ancla #ciencia).
+      - `lib/site.ts`: config central (WhatsApp, redes, correo, navLinks).
+      - Puntos de control M3 (verificados en navegador integrado):
+        - Escritorio 1440, tablet 768 y **móvil 375** correctos (capturas).
+        - En móvil el toro pasa a **fondo atenuado** (opacity 0.14) y el nav a
+          hamburguesa (probado: abre/cierra con links + Comprar).
+        - `prefers-reduced-motion`: media query global que anula animaciones +
+          `useReducedMotion` en cada componente animado.
+        - `npm run build` OK (TypeScript sin errores).
+      - Bug corregido: Framer sobreescribía la opacidad/translate de Tailwind del
+        toro → se separó posicionamiento (CSS wrapper) de animación (motion hijo).
+
+
 - [x] M2 API de catálogo (DRF) — 2026-09-21
       - `django-filter` 26.1 añadido; `DEFAULT_FILTER_BACKENDS` (filtros + búsqueda
         + orden) en settings base.
@@ -100,8 +128,15 @@
                 &featured=true &search= &ordering=price|-price|name|created_at
                 &page=
 
+## Pendientes / deuda técnica (añadido en M3)
+- Toro OFICIAL integrado (arte del usuario). Variante "light" (cara azul) lista
+  para cuando existan secciones ivory.
+- Lighthouse NO se ejecutó (sin tooling en este entorno); correrlo en M9/M10 con
+  contenido real. Se aplicaron buenas prácticas (HTML semántico, aria-labels,
+  font-display swap, sin CLS por dimensiones fijas, rel=noopener en externos).
+- navLinks/CTAs apuntan a /catalogo(?category=) que se implementa en M4.
+
 ## Próximo paso
-- M3: Frontend base + design system — layout global, header (nav + hamburguesa
-  móvil), footer (TikTok/Instagram/correo), botón flotante de WhatsApp, hero
-  animado (entrada titular+toro, parallax, brillo cuernos #88BEDF), respetando
-  prefers-reduced-motion. Consumirá la API de M2 en M4.
+- M4: Catálogo y detalle de producto con SSR — página /catalogo (filtros/búsqueda
+  contra la API M2) con tarjetas de producto y microinteracciones; /producto/[slug]
+  con fotos, descripción, precio, stock y relacionados; render del lado del servidor.

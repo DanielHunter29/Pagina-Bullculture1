@@ -69,6 +69,21 @@
   }
 }
 
+/* Brillo pulsante de los cuernos del toro (#88BEDF). */
+.bull-horns-glow {
+  filter: drop-shadow(0 0 4px rgba(136, 190, 223, 0.55));
+  animation: hornGlow 3.6s ease-in-out infinite;
+}
+@keyframes hornGlow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 4px rgba(136, 190, 223, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 11px rgba(136, 190, 223, 0.95));
+  }
+}
+
 /* Accesibilidad: respeta "movimiento reducido" en todo el sitio. */
 @media (prefers-reduced-motion: reduce) {
   *,

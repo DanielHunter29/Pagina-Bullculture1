@@ -2,6 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false, // no exponer "X-Powered-By"
+  agentRules: false, // no autogenerar AGENTS.md / CLAUDE.md
   images: {
     // Cloudinary se habilita en M9.
     remotePatterns: [
