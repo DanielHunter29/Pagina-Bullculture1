@@ -1,9 +1,31 @@
 # ESTADO.md — Memoria de trabajo BULLCULTURE
 
-## Módulo actual: M5 — Carrito + descuento por volumen
+## Módulo actual: M6 — Checkout invitado + WOMPI + webhooks
 ## Estado: pendiente (esperando confirmación para iniciar)
 
 ## Hitos completados
+- [x] M5 Carrito + descuento por volumen — 2026-09-22
+      - Backend: `apps/orders/services.py::quote_cart` (fuente de verdad de
+        importes, Decimal) + endpoint `POST /api/cart/quote/` (AllowAny, throttle
+        anon). El navegador solo envía {product, quantity}; precios y descuento
+        salen de la BD/reglas. Fusiona líneas duplicadas; marca `exceeds_stock`.
+      - `seed_demo` ahora crea 3 reglas de descuento (3+→5%, 5+→10%, 10+→15%).
+      - Frontend: `lib/cart.ts` (localStorage + fetchQuote), `CartProvider`
+        (estado + persistencia + quote con debounce/abort), `CartButton` (badge
+        animado), `CartDrawer` (cajón animado con resumen del backend),
+        `AddToCartButton` conectado (abre el cajón = animación al agregar).
+      - Puntos de control M5 (verificados):
+        - Descuento SOLO en backend: test `test_endpoint_ignores_price_sent_by
+          _browser` (precio malicioso ignorado); verificado en vivo (3× Creatina
+          → subtotal 269.700, desc. 5% −13.485, total 256.215).
+        - Persiste al recargar: localStorage conserva el carrito; header muestra
+          "(3)" tras recargar (verificado en navegador).
+        - Pruebas unitarias del cálculo: 10 tests (umbral, mejor regla, Decimal
+          quantizado, validaciones, merge, exceeds_stock). Suite total 42 OK.
+      - Nota: las capturas del navegador dejaron de refrescarse (ventana detrás de
+        otra); la verificación se hizo por DOM/JS (fiable) + tests.
+
+
 - [x] M4 Catálogo y detalle de producto (SSR) — 2026-09-22
       - `lib/api.ts` (cliente tipado, fetch `no-store` = SSR), `lib/format.ts`
         (COP) y `lib/catalog.ts` (goals/orderings).
@@ -167,7 +189,9 @@
   / API_URL, con fallback a http://localhost:8000/api).
 
 ## Próximo paso
-- M5: Carrito + descuento por volumen — carrito persistente (sobrevive al
-  recargar), descuento automático por volumen calculado SOLO en backend (reglas
-  configurables en admin), animación al agregar, y pruebas unitarias del cálculo.
-  Conectar AddToCartButton (ya listo en UI).
+- M6: Checkout invitado + WOMPI + webhooks — formulario de invitado (nombre,
+  cédula, teléfono, correo, dirección, ciudad, notas) + casilla Ley 1581;
+  crear Pedido con referencia única; firma de integridad WOMPI en backend;
+  webhook con verificación de checksum (aprobado/rechazado/pendiente);
+  descuento de stock con select_for_update + revalidación; idempotencia.
+  El botón "Ir a pagar" del carrito ya apunta a /checkout (crear la página).

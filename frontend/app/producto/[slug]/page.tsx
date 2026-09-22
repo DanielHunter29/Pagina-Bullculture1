@@ -109,6 +109,13 @@ export default async function ProductPage({ params }: { params: Params }) {
 
           <div className="mt-8">
             <AddToCartButton
+              product={{
+                id: product.id,
+                slug: product.slug,
+                name: product.name,
+                price: product.price,
+                image: product.primary_image?.image_url ?? null,
+              }}
               maxStock={product.available_stock}
               disabled={!product.is_in_stock}
             />

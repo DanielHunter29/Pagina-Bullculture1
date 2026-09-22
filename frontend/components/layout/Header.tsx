@@ -7,6 +7,7 @@ import { Menu, X } from "lucide-react";
 
 import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
+import { CartButton } from "@/components/cart/CartButton";
 import { navLinks } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
@@ -56,6 +57,7 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <CartButton />
           <Button asChild size="sm" className="hidden sm:inline-flex">
             <Link href="/catalogo">Comprar</Link>
           </Button>

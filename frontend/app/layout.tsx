@@ -4,6 +4,7 @@ import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { WhatsAppButton } from "@/components/layout/WhatsAppButton";
+import { CartProvider } from "@/components/cart/CartProvider";
 
 // Cuerpo: sans-serif legible.
 const inter = Inter({
@@ -43,10 +44,12 @@ export default function RootLayout({
     // Tema oscuro por defecto (marca dark-first).
     <html lang="es-CO" className={`dark ${inter.variable} ${oswald.variable}`}>
       <body>
-        <Header />
-        <main>{children}</main>
-        <Footer />
-        <WhatsAppButton />
+        <CartProvider>
+          <Header />
+          <main>{children}</main>
+          <Footer />
+          <WhatsAppButton />
+        </CartProvider>
       </body>
     </html>
   );

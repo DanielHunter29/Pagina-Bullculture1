@@ -15,5 +15,6 @@ urlpatterns = [
     path("api/health/", health, name="health"),
     # Catálogo (M2): /api/categories/ y /api/products/
     path("api/", include("apps.catalog.urls")),
-    # Carrito, checkout, etc. se montan en M5+.
+    # Carrito (M5): /api/cart/quote/
+    path("api/", include("apps.orders.urls")),
 ]

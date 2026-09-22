@@ -10,6 +10,13 @@ from django.utils import timezone
 from django.utils.text import slugify
 
 from apps.catalog.models import Batch, Category, Product, ProductImage
+from apps.discounts.models import VolumeDiscountRule
+
+DISCOUNT_RULES = [
+    ("3 o más productos", 3, "5"),
+    ("5 o más productos", 5, "10"),
+    ("10 o más productos", 10, "15"),
+]
 
 CATEGORIES = [
     ("Suplementos", "suplementos", None),
@@ -128,5 +135,16 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 f"Productos: {Product.objects.count()} ({created} nuevos)."
+            )
+        )
+
+        for name, min_qty, pct in DISCOUNT_RULES:
+            VolumeDiscountRule.objects.get_or_create(
+                name=name,
+                defaults={"min_quantity": min_qty, "percentage": Decimal(pct)},
+            )
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Reglas de descuento: {VolumeDiscountRule.objects.count()}"
             )
         )
