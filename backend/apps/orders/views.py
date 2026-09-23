@@ -19,6 +19,7 @@ from .services import (
     IdempotencyConflict,
     check_stock,
     create_order,
+    merge_cart_items,
     process_wompi_transaction,
     quote_cart,
 )
@@ -43,15 +44,7 @@ class CartQuoteView(APIView):
         serializer = CartQuoteInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        merged: dict[int, dict] = {}
-        for item in serializer.validated_data["items"]:
-            product = item["product"]
-            if product.id in merged:
-                merged[product.id]["quantity"] += item["quantity"]
-            else:
-                merged[product.id] = {"product": product, "quantity": item["quantity"]}
-
-        result = quote_cart(list(merged.values()))
+        result = quote_cart(merge_cart_items(serializer.validated_data["items"]))
         return Response(CartQuoteOutputSerializer(result).data)
 
 
@@ -71,15 +64,7 @@ class CheckoutView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        # Fusiona ítems repetidos.
-        merged: dict[int, dict] = {}
-        for item in data["items"]:
-            product = item["product"]
-            if product.id in merged:
-                merged[product.id]["quantity"] += item["quantity"]
-            else:
-                merged[product.id] = {"product": product, "quantity": item["quantity"]}
-        items = list(merged.values())
+        items = merge_cart_items(data["items"])
 
         # Revalida stock ANTES de crear el pedido / iniciar el pago.
         stock_errors = check_stock(items)

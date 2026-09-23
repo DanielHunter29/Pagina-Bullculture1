@@ -19,7 +19,7 @@ class Command(BaseCommand):
         try:
             user = User.objects.get(username=options["username"])
         except User.DoesNotExist:
-            raise CommandError(f"Usuario '{options['username']}' no existe.")
+            raise CommandError(f"Usuario '{options['username']}' no existe.") from None
 
         device, created = TOTPDevice.objects.get_or_create(
             user=user, name="default", defaults={"confirmed": True}
@@ -30,7 +30,7 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS(
-                ("Dispositivo TOTP creado." if created else "Dispositivo TOTP ya existía.")
+                "Dispositivo TOTP creado." if created else "Dispositivo TOTP ya existía."
             )
         )
         self.stdout.write("Escanea este código en tu app de autenticación:")

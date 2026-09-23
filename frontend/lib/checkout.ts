@@ -1,6 +1,5 @@
 import type { CartItem } from "./cart";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+import { API_BASE } from "./config";
 
 export interface CheckoutInput {
   customer_name: string;

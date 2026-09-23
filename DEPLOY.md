@@ -39,7 +39,15 @@ docker compose -f docker-compose.prod.yml exec backend python manage.py createsu
 docker compose -f docker-compose.prod.yml exec backend python manage.py setup_2fa <usuario>   # enrola 2FA
 ```
 
-- `collectstatic` y `migrate` corren automáticamente al iniciar.
+- `collectstatic` corre al construir la imagen; `migrate` corre en el servicio
+  `migrate` (una vez por despliegue) y `backend`/`scheduler` arrancan solo si
+  terminó bien. Para un despliegue nuevo basta con
+  `docker compose -f docker-compose.prod.yml up -d --build`.
+- Workers de gunicorn: `GUNICORN_CMD_ARGS` en `.env` (por defecto 3 workers;
+  recomendado 2 × núcleos del VPS + 1).
+- `GET /api/health/` comprueba base de datos y Redis (503 si falla alguno); el
+  contenedor `backend` lo usa como healthcheck (`docker compose ps`).
+- Errores a Sentry (opcional): define `SENTRY_DSN`. Nunca se envía PII.
 - El servicio `scheduler` ejecuta `run_maintenance` cada 15 min: reintenta los
   correos de confirmación fallidos (hasta `EMAIL_RETRY_MAX_AGE_DAYS`) y marca
   como `expirado` los pedidos pendientes con más de `PENDING_ORDER_TTL_HOURS`.

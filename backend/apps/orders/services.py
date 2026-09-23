@@ -28,6 +28,22 @@ class IdempotencyConflict(Exception):
         self.code = code
 
 
+def merge_cart_items(items):
+    """Fusiona líneas repetidas del mismo producto sumando sus cantidades.
+
+    `items` son dicts {"product": Product, "quantity": int}; conserva el orden
+    de la primera aparición de cada producto.
+    """
+    merged: dict[int, dict] = {}
+    for item in items:
+        product = item["product"]
+        if product.id in merged:
+            merged[product.id]["quantity"] += item["quantity"]
+        else:
+            merged[product.id] = {"product": product, "quantity": item["quantity"]}
+    return list(merged.values())
+
+
 def quote_cart(items):
     """Calcula el resumen del carrito EN EL BACKEND.
 

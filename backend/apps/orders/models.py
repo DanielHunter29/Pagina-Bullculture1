@@ -146,8 +146,8 @@ class Order(TimeStampedModel):
         verbose_name = "Pedido"
         verbose_name_plural = "Pedidos"
         ordering = ["-created_at"]
+        # `reference` ya tiene índice por ser unique.
         indexes = [
-            models.Index(fields=["reference"]),
             models.Index(fields=["payment_status"]),
             models.Index(fields=["needs_review"]),
         ]

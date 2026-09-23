@@ -15,3 +15,8 @@ _CENTS = Decimal("0.01")
 def quantize_money(value) -> Decimal:
     """Convierte un valor a Decimal con 2 decimales (redondeo bancario común)."""
     return Decimal(value).quantize(_CENTS, rounding=ROUND_HALF_UP)
+
+
+def format_cop(value) -> str:
+    """Formatea un importe en pesos colombianos sin decimales: `$ 1.234.567`."""
+    return "$ " + f"{int(value):,}".replace(",", ".")

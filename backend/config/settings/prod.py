@@ -53,6 +53,8 @@ REST_FRAMEWORK = {**REST_FRAMEWORK, "NUM_PROXIES": TRUSTED_PROXY_COUNT}
 
 # --- Cabeceras y transporte seguro (endurecimiento final en M10) ---
 SECURE_SSL_REDIRECT = True
+# El healthcheck interno del contenedor llega por HTTP directo (sin proxy).
+SECURE_REDIRECT_EXEMPT = [r"^api/health/$"]
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 SESSION_COOKIE_SECURE = True
@@ -89,6 +91,19 @@ EMAIL_USE_TLS = True
 # SendGrid: usuario "apikey" + API key como contraseña.
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="resend")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default=env("RESEND_API_KEY", default=""))
+
+# --- Monitoreo de errores (opcional): Sentry si se define SENTRY_DSN ---
+SENTRY_DSN = env("SENTRY_DSN", default="")
+if SENTRY_DSN:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=env("SENTRY_ENVIRONMENT", default="production"),
+        traces_sample_rate=env.float("SENTRY_TRACES_SAMPLE_RATE", default=0.0),
+        # Nunca enviar PII de clientes (cédula, dirección, correo) a terceros.
+        send_default_pii=False,
+    )
 
 # --- Logging de eventos críticos ---
 LOGGING = {

@@ -125,8 +125,8 @@ class Product(TimeStampedModel):
         verbose_name = "Producto"
         verbose_name_plural = "Productos"
         ordering = ["-created_at"]
+        # `slug` ya tiene índice por ser unique.
         indexes = [
-            models.Index(fields=["slug"]),
             models.Index(fields=["is_active", "goal"]),
         ]
 

@@ -4,11 +4,7 @@
  * para garantizar renderizado del lado del servidor (SSR) con datos frescos.
  */
 
-// En el servidor se puede usar una URL interna (API_URL); si no, la pública.
-const BASE =
-  process.env.API_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:8000/api";
+import { SERVER_API_BASE as BASE } from "./config";
 
 export interface Category {
   id: number;

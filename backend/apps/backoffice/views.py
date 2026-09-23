@@ -1,11 +1,11 @@
 """Vistas del backoffice (dashboard y reportes). Solo personal (staff)."""
-from decimal import Decimal
 from io import BytesIO
 
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse
 from django.shortcuts import render
 
+from apps.common.money import format_cop
 from apps.orders.models import Order
 
 from .reports import (
@@ -129,8 +129,7 @@ def export_sales_pdf(request):
         Spacer(1, 0.5 * cm),
     ]
 
-    def money(v):
-        return "$ " + f"{int(v):,}".replace(",", ".")
+    money = format_cop
 
     summary = [
         ["Pedidos pagados", str(sales["orders_count"])],

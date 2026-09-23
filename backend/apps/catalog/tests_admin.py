@@ -1,6 +1,5 @@
 """Pruebas de humo del admin: las páginas de alta cargan y se puede crear."""
 from datetime import timedelta
-from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase

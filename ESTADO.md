@@ -4,6 +4,31 @@
 ## Estado: listo para revisión / despliegue
 
 ## Hitos completados
+- [x] Fase 3 de endurecimiento (post-revisión, P2: calidad y operación) — 2026-09-23
+      - CI (`.github/workflows/ci.yml`): backend con ruff, makemigrations
+        --check, tests en PostgreSQL + Redis (incluye concurrencia real),
+        `check --deploy` y pip-audit; frontend con lint, typecheck, build y
+        npm audit; build de la imagen Docker y validación del compose de prod.
+      - Lint: ruff (`backend/pyproject.toml`, 0 hallazgos); ESLint 10 con flat
+        config (`frontend/eslint.config.mjs`, reemplaza `.eslintrc.json`);
+        scripts `lint` y `typecheck`.
+      - Tests: `apps/orders/tests_concurrency.py` (dos compradores por la
+        última unidad; webhooks duplicados simultáneos) con
+        `config.settings.test_postgres`; se omiten en SQLite.
+      - Refactors: `merge_cart_items`, `format_cop` en `apps.common.money`,
+        `frontend/lib/config.ts` (URL de la API única).
+      - Operación: requirements-dev.txt (pip-audit/ruff fuera de la imagen);
+        collectstatic en el build; servicio `migrate` de un solo uso;
+        `GUNICORN_CMD_ARGS`; healthcheck real (`/api/health/`: BD + caché) usado
+        por el contenedor; Sentry opcional (`SENTRY_DSN`, sin PII); índices
+        redundantes eliminados (migraciones catalog 0002 / orders 0005).
+      - PENDIENTE: e2e con Playwright (requiere añadir la dependencia con npm;
+        bloqueado en este entorno); confirmar el primer run verde de la CI.
+      - Puntos de control: 128 tests OK (2 de concurrencia omitidos en SQLite);
+        ruff limpio; `makemigrations --check` limpio; collectstatic con los
+        valores del Dockerfile OK; `check --deploy --fail-level WARNING` OK;
+        compose de prod válido.
+
 - [x] Fase 2 de endurecimiento (post-revisión, P1: pagos y cumplimiento) — 2026-09-23
       - WOMPI: cada webhook firmado se confirma con `GET /transactions/{id}` a la
         API (fuente de verdad; si la API no responde se aplica el evento firmado;
@@ -322,9 +347,7 @@
 ## Pendientes / deuda técnica
 - Ejecutar `docker compose up --build` con Docker Desktop abierto para validación
   end-to-end en vivo (config ya validada estáticamente).
-- ESLint 10 usa flat config; `.eslintrc.json` podría requerir migrar a
-  `eslint.config.mjs` al usar `npm run lint` (no bloquea el build). Revisar en M3.
-- `next lint` está deprecado en Next 16; migrar a ESLint CLI cuando toque.
+- (Resuelto en Fase 3) ESLint migrado a flat config y `npm run lint` usa el CLI.
 
 ## API disponible para el frontend (M2)
 - GET /api/categories/  ·  GET /api/categories/{slug}/

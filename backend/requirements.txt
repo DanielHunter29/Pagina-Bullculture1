@@ -17,5 +17,7 @@ reportlab==5.0.1
 gunicorn==26.2.0
 whitenoise==6.12.0
 
-# --- Calidad / seguridad (dev) ---
-pip-audit==2.7.3
+# --- Monitoreo de errores (opcional, activo si hay SENTRY_DSN) ---
+sentry-sdk==2.70.0
+
+# Herramientas de desarrollo/CI: requirements-dev.txt (no van en la imagen).

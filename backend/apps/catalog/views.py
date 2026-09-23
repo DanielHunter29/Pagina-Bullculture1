@@ -1,6 +1,6 @@
 """API de solo lectura del catálogo (M2)."""
 from rest_framework import viewsets
-from rest_framework.filters import OrderingFilter, SearchFilter
+from rest_framework.filters import OrderingFilter
 from rest_framework.permissions import AllowAny
 
 from .filters import ProductFilter
