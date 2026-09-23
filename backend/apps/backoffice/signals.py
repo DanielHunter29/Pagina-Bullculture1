@@ -4,14 +4,13 @@ import logging
 from django.contrib.auth.signals import user_logged_in, user_login_failed
 from django.dispatch import receiver
 
+from apps.common.ip import client_ip
+
 logger = logging.getLogger("bullculture.security")
 
 
 def _client_ip(request):
-    if request is None:
-        return "?"
-    xff = request.META.get("HTTP_X_FORWARDED_FOR")
-    return xff.split(",")[0].strip() if xff else request.META.get("REMOTE_ADDR", "?")
+    return client_ip(request) or "?"
 
 
 @receiver(user_logged_in)

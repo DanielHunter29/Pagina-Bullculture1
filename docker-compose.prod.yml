@@ -21,6 +21,18 @@ services:
       timeout: 5s
       retries: 10
 
+  # Caché compartida (throttling de la API entre workers). Sin persistencia:
+  # si se reinicia solo se pierden contadores de rate limiting.
+  redis:
+    image: redis:7-alpine
+    restart: always
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   backend:
     build:
       context: ./backend
@@ -35,12 +47,15 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
       POSTGRES_HOST: db
+      REDIS_URL: redis://redis:6379/0
     expose:
       - "8000"
     ports:
       - "127.0.0.1:8000:8000"  # detrás de un proxy TLS (nginx/traefik/plataforma)
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   # Copias de seguridad automáticas diarias de la base de datos.

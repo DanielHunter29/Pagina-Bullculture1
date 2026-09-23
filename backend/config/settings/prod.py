@@ -5,7 +5,7 @@ DEBUG está desactivado y se activan las cabeceras de seguridad. La SECRET_KEY,
 los hosts permitidos y las credenciales deben venir SIEMPRE del entorno.
 """
 from .base import *  # noqa: F401,F403
-from .base import env
+from .base import REST_FRAMEWORK, env
 
 DEBUG = False
 
@@ -14,6 +14,19 @@ ALLOWED_HOSTS = env("DJANGO_ALLOWED_HOSTS")
 
 # Falla el arranque si la SECRET_KEY sigue siendo el valor de desarrollo.
 SECRET_KEY = env("DJANGO_SECRET_KEY")
+
+# Caché compartida obligatoria (throttling entre workers). Falla si falta.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": env("REDIS_URL"),
+        "KEY_PREFIX": "bullculture",
+    }
+}
+
+# Detrás del proxy TLS: por defecto 1 salto de confianza.
+TRUSTED_PROXY_COUNT = env.int("TRUSTED_PROXY_COUNT", default=1)
+REST_FRAMEWORK = {**REST_FRAMEWORK, "NUM_PROXIES": TRUSTED_PROXY_COUNT}
 
 # --- Cabeceras y transporte seguro (endurecimiento final en M10) ---
 SECURE_SSL_REDIRECT = True

@@ -19,9 +19,10 @@ class OrderAdmin(admin.ModelAdmin):
         "total",
         "payment_status",
         "fulfillment_status",
+        "needs_review",
         "created_at",
     )
-    list_filter = ("payment_status", "fulfillment_status", "created_at")
+    list_filter = ("needs_review", "payment_status", "fulfillment_status", "created_at")
     search_fields = (
         "reference",
         "customer_name",
@@ -36,11 +37,13 @@ class OrderAdmin(admin.ModelAdmin):
         "discount_amount",
         "total",
         "paid_at",
+        "review_reason",
         "created_at",
         "updated_at",
     )
     fieldsets = (
         ("Pedido", {"fields": ("reference", "payment_status", "fulfillment_status")}),
+        ("Revisión", {"fields": ("needs_review", "review_reason")}),
         (
             "Cliente",
             {

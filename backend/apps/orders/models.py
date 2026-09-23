@@ -127,6 +127,15 @@ class Order(TimeStampedModel):
     stock_deducted = models.BooleanField("Stock descontado", default=False)
     email_sent = models.BooleanField("Correo enviado", default=False)
 
+    # --- Revisión manual (p. ej. pago aprobado sin stock suficiente) ---
+    needs_review = models.BooleanField(
+        "Requiere revisión",
+        default=False,
+        help_text="Se marca automáticamente si hubo un problema al confirmar el pago. "
+        "Desmárcalo cuando el caso esté resuelto.",
+    )
+    review_reason = models.TextField("Motivo de revisión", blank=True)
+
     class Meta:
         verbose_name = "Pedido"
         verbose_name_plural = "Pedidos"
@@ -134,6 +143,7 @@ class Order(TimeStampedModel):
         indexes = [
             models.Index(fields=["reference"]),
             models.Index(fields=["payment_status"]),
+            models.Index(fields=["needs_review"]),
         ]
 
     def __str__(self):

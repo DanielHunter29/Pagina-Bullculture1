@@ -20,6 +20,9 @@ WOMPI_PUBLIC_KEY=... WOMPI_PRIVATE_KEY=... WOMPI_EVENTS_SECRET=... WOMPI_INTEGRI
 EMAIL_HOST=smtp.resend.com EMAIL_HOST_USER=resend EMAIL_HOST_PASSWORD=<API key>
 DEFAULT_FROM_EMAIL=BULLCULTURE <no-reply@bullculture.co>
 CLOUDINARY_URL=cloudinary://...
+TRUSTED_PROXY_COUNT=1                 # proxies delante del backend (nginx/traefik)
+STAFF_ALERT_EMAILS=operaciones@bullculture.co   # alertas de pedidos por revisar
+# REDIS_URL la define docker-compose.prod.yml (redis://redis:6379/0)
 ```
 
 Genera la SECRET_KEY:
@@ -38,12 +41,23 @@ docker compose -f docker-compose.prod.yml exec backend python manage.py setup_2f
 - `collectstatic` y `migrate` corren automáticamente al iniciar.
 - Los estáticos del admin se sirven con **whitenoise**.
 - Pon un proxy TLS (nginx/traefik/plataforma) delante del backend: **HTTPS obligatorio**.
-- **Backups**: el servicio `db_backup` genera un `pg_dump` comprimido diario en el
-  volumen `db_backups` (retención de 14). Restaurar:
+- El proxy debe **añadir** la IP del cliente a `X-Forwarded-For` (nginx:
+  `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`) y enviar
+  `X-Forwarded-Proto`. Si hay más de un proxy en cadena (p. ej. CDN + nginx),
+  ajusta `TRUSTED_PROXY_COUNT`; de ello dependen el rate limiting y el bloqueo
+  de axes.
+- **Redis** (servicio `redis`) es la caché compartida del rate limiting;
+  `config.settings.prod` no arranca sin `REDIS_URL` (compose ya la define).
+- **Backups**: el servicio `db_backup` genera a diario un `pg_dump` en formato
+  custom (`.dump`, comprimido) en el volumen `db_backups`, **verificado** con
+  `pg_restore --list` antes de rotar (retención de 14). Un fallo no borra los
+  backups anteriores. Restaurar:
   ```bash
-  gunzip -c bullculture_YYYYmmdd_HHMMSS.sql.gz | \
-    docker compose -f docker-compose.prod.yml exec -T db psql -U $POSTGRES_USER $POSTGRES_DB
+  docker compose -f docker-compose.prod.yml exec -T db \
+    pg_restore -U $POSTGRES_USER -d $POSTGRES_DB --clean --if-exists < bullculture_YYYYmmdd_HHMMSS.dump
   ```
+  Recomendado: copiar periódicamente el volumen `db_backups` fuera del servidor
+  (S3/Backblaze); hoy los backups viven en el mismo host que la base.
 
 ## 3. Frontend (Vercel)
 

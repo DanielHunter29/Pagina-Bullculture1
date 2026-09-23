@@ -75,4 +75,4 @@ Guía completa y checklist OWASP en [`DEPLOY.md`](./DEPLOY.md).
 - CORS restringido al dominio del frontend; Habeas Data (Ley 1581) en checkout.
 - Backups automáticos de la DB; logs de pagos, inventario y accesos al admin.
 - Dependencias auditadas con `pip-audit` y `npm audit` (0 vulnerabilidades).
-- Suite de pruebas de flujos críticos (66 tests).
+- Suite de pruebas de flujos críticos (87 tests).

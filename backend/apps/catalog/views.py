@@ -1,12 +1,10 @@
 """API de solo lectura del catálogo (M2)."""
-from django.db.models import IntegerField, Sum, Value
-from django.db.models.functions import Coalesce
 from rest_framework import viewsets
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import AllowAny
 
 from .filters import ProductFilter
-from .models import Category, Product
+from .models import Category, Product, sellable_stock_expr
 from .serializers import (
     CategorySerializer,
     ProductDetailSerializer,
@@ -17,18 +15,16 @@ from .serializers import (
 RELATED_LIMIT = 4
 
 
-def _stock_annotation():
-    """Anota el stock total (suma de lotes) evitando N+1 consultas."""
-    return Coalesce(Sum("batches__quantity"), Value(0), output_field=IntegerField())
-
-
 def public_product_queryset():
-    """Productos activos, con categoría/imágenes precargadas y stock anotado."""
+    """Productos activos, con categoría/imágenes precargadas y stock vendible anotado.
+
+    `total_stock` excluye los lotes vencidos (no se pueden vender).
+    """
     return (
         Product.objects.filter(is_active=True)
         .select_related("category")
         .prefetch_related("images")
-        .annotate(total_stock=_stock_annotation())
+        .annotate(total_stock=sellable_stock_expr())
     )
 
 

@@ -9,6 +9,8 @@ from apps.catalog.models import Batch
 from apps.common.money import quantize_money
 from apps.discounts.models import VolumeDiscountRule
 
+from .alerts import send_review_alert
+
 logger = logging.getLogger(__name__)
 
 
@@ -32,8 +34,9 @@ def quote_cart(items):
         subtotal += line_total
         total_quantity += qty
 
-        stock = product.available_stock
-        primary = product.images.filter(is_primary=True).first() or product.images.first()
+        stock = product.available_stock  # usa la anotación `sellable_stock` si existe
+        images = list(product.images.all())  # prefetch: sin consulta extra
+        primary = next((img for img in images if img.is_primary), images[0] if images else None)
         lines.append(
             {
                 "product": product.id,
@@ -130,20 +133,25 @@ def create_order(*, customer: dict, items, idempotency_key: str | None = None):
 
 
 def deduct_stock(order):
-    """Descuenta stock de los lotes (FEFO). Idempotente vía `stock_deducted`.
+    """Descuenta stock de los lotes vendibles (FEFO). Idempotente vía `stock_deducted`.
 
     Debe llamarse dentro de una transacción con el pedido ya bloqueado
-    (select_for_update).
+    (select_for_update). Los lotes vencidos nunca se despachan. Si el stock no
+    alcanza (p. ej. dos clientes pagaron la última unidad), se descuenta lo que
+    haya, el pedido se marca `needs_review` y se alerta al staff al confirmar
+    la transacción.
     """
     if order.stock_deducted:
         return
 
+    shortages = []
     for item in order.items.select_related("product"):
         remaining = item.quantity
         batches = (
             Batch.objects.select_for_update()
+            .sellable()
             .filter(product_id=item.product_id)
-            .order_by("expiration_date")
+            .order_by("expiration_date", "id")
         )
         for batch in batches:
             if remaining <= 0:
@@ -154,6 +162,7 @@ def deduct_stock(order):
                 batch.save(update_fields=["quantity", "updated_at"])
                 remaining -= take
         if remaining > 0:
+            shortages.append(f"- {item.product_name or item.product}: faltan {remaining} de {item.quantity}")
             logger.error(
                 "Stock insuficiente al confirmar pago: pedido %s, producto %s (faltan %s)",
                 order.reference,
@@ -162,8 +171,19 @@ def deduct_stock(order):
             )
 
     order.stock_deducted = True
-    order.save(update_fields=["stock_deducted", "updated_at"])
+    update_fields = ["stock_deducted", "updated_at"]
+    if shortages:
+        order.needs_review = True
+        reason = "Pago aprobado sin stock vendible suficiente:\n" + "\n".join(shortages)
+        order.review_reason = f"{order.review_reason}\n{reason}".strip()
+        update_fields += ["needs_review", "review_reason"]
+    order.save(update_fields=update_fields)
     logger.info("Inventario: stock descontado para pedido %s", order.reference)
+
+    if shortages:
+        # Tras el commit: no se alerta si la transacción se revierte, y el SMTP
+        # no retiene los locks de la BD.
+        transaction.on_commit(lambda: send_review_alert(order))
 
 
 # Mapa de estados de WOMPI → estados del pedido.

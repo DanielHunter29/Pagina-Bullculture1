@@ -63,6 +63,11 @@
         <div class="value">{{ metrics.low_stock|length }}</div>
         <div class="sub">productos por reponer</div>
       </div>
+      <div class="card {% if metrics.needs_review %}alert{% endif %}">
+        <div class="label">Pedidos por revisar</div>
+        <div class="value">{{ metrics.needs_review_count }}</div>
+        <div class="sub">pagados con incidencias</div>
+      </div>
     </div>
 
     <!-- Exportes -->
@@ -78,6 +83,25 @@
       <button class="btn" formaction="{% url 'backoffice:export-xlsx' %}">Exportar Excel</button>
       <button class="btn secondary" formaction="{% url 'backoffice:export-pdf' %}">Exportar PDF</button>
     </form>
+
+    <!-- Pedidos que requieren revisión -->
+    {% if metrics.needs_review %}
+    <section>
+      <h2>Pedidos por revisar</h2>
+      <table>
+        <thead><tr><th>Referencia</th><th>Cliente</th><th>Motivo</th></tr></thead>
+        <tbody>
+          {% for o in metrics.needs_review %}
+          <tr>
+            <td><a href="{% url 'admin:orders_order_change' o.pk %}">{{ o.reference }}</a></td>
+            <td>{{ o.customer_name }}</td>
+            <td>{{ o.review_reason|linebreaksbr }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% endif %}
 
     <!-- Alertas de stock -->
     <section>

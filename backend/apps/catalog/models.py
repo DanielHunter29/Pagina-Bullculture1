@@ -3,6 +3,8 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models import Q, Sum, Value
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from apps.common.models import TimeStampedModel
@@ -41,6 +43,22 @@ class Category(TimeStampedModel):
         # Una categoría no puede ser su propia padre.
         if self.parent_id and self.parent_id == self.id:
             raise ValidationError({"parent": "Una categoría no puede ser su propia padre."})
+
+
+def sellable_stock_expr(prefix: str = "batches__"):
+    """Suma de stock vendible (lotes NO vencidos) para anotar querysets.
+
+    `prefix` es la ruta desde el modelo anotado hasta Batch. Se evalúa al
+    construir el queryset, así que "hoy" siempre es la fecha actual.
+    """
+    return Coalesce(
+        Sum(
+            f"{prefix}quantity",
+            filter=Q(**{f"{prefix}expiration_date__gte": timezone.localdate()}),
+        ),
+        Value(0),
+        output_field=models.IntegerField(),
+    )
 
 
 class Product(TimeStampedModel):
@@ -117,8 +135,14 @@ class Product(TimeStampedModel):
 
     @property
     def available_stock(self) -> int:
-        """Stock total disponible = suma de la cantidad de todos sus lotes."""
-        return self.batches.aggregate(total=models.Sum("quantity"))["total"] or 0
+        """Stock vendible = suma de la cantidad de sus lotes NO vencidos.
+
+        Si el queryset ya trae la anotación `sellable_stock`, se usa (sin consulta).
+        """
+        annotated = getattr(self, "sellable_stock", None)
+        if annotated is not None:
+            return annotated
+        return self.batches.sellable().aggregate(total=models.Sum("quantity"))["total"] or 0
 
     @property
     def is_low_stock(self) -> bool:
@@ -160,8 +184,16 @@ class ProductImage(TimeStampedModel):
         return f"Imagen de {self.product.name}"
 
 
+class BatchQuerySet(models.QuerySet):
+    def sellable(self):
+        """Lotes que se pueden vender: los que no han vencido (vencen hoy o después)."""
+        return self.filter(expiration_date__gte=timezone.localdate())
+
+
 class Batch(TimeStampedModel):
     """Lote de inventario con fecha de vencimiento (control FEFO)."""
+
+    objects = BatchQuerySet.as_manager()
 
     product = models.ForeignKey(
         Product,
