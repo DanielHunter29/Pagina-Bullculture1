@@ -87,7 +87,7 @@ VALID_CUSTOMER = {
 class IntegritySignatureTests(TestCase):
     def test_signature_matches_expected_sha256(self):
         expected = hashlib.sha256(
-            "BC-ABC1000COPtest_integrity_secret".encode()
+            b"BC-ABC1000COPtest_integrity_secret"
         ).hexdigest()
         self.assertEqual(
             generate_integrity_signature("BC-ABC", 1000, "COP"), expected

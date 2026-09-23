@@ -39,6 +39,10 @@ next-env.d.ts
 Thumbs.db
 *.log
 
+# === Herramientas locales (pueden contener tokens) ===
+.semgrep/
+.claude/worktrees/
+
 # === Auditorías ===
 pip-audit.json
 npm-audit.json

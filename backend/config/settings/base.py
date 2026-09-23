@@ -160,9 +160,31 @@ REST_FRAMEWORK = {
     },
 }
 
+# --- Proxies de confianza (nginx/traefik delante del backend) ---
+# Número de proxies que añaden X-Forwarded-For. 0 = conexión directa (dev):
+# se usa REMOTE_ADDR y se ignora X-Forwarded-For (lo puede falsificar el cliente).
+TRUSTED_PROXY_COUNT = env.int("TRUSTED_PROXY_COUNT", default=0)
+REST_FRAMEWORK["NUM_PROXIES"] = TRUSTED_PROXY_COUNT
+
+# --- Caché (throttling de DRF) ---
+# Con varios workers de gunicorn la caché DEBE ser compartida (Redis); si no,
+# cada proceso lleva su propio contador y el límite real se multiplica.
+REDIS_URL = env("REDIS_URL", default="")
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+            "KEY_PREFIX": "bullculture",
+        }
+    }
+else:
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
 # --- CORS: solo el dominio del frontend puede consumir la API ---
 CORS_ALLOWED_ORIGINS = env("CORS_ALLOWED_ORIGINS")
-CORS_ALLOW_CREDENTIALS = True
+# La API no usa cookies ni sesión (authentication_classes=[]): sin credenciales.
+CORS_ALLOW_CREDENTIALS = False
 
 # --- URL pública del frontend (para redirecciones de pago) ---
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
@@ -173,6 +195,16 @@ FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
 DEFAULT_FROM_EMAIL = env(
     "DEFAULT_FROM_EMAIL", default="BULLCULTURE <no-reply@bullculture.co>"
 )
+
+# Mantenimiento periódico (comando run_maintenance).
+# Horas tras las cuales un pedido pendiente se marca como expirado.
+PENDING_ORDER_TTL_HOURS = env.int("PENDING_ORDER_TTL_HOURS", default=24)
+# Días durante los que se reintenta un correo de confirmación fallido.
+EMAIL_RETRY_MAX_AGE_DAYS = env.int("EMAIL_RETRY_MAX_AGE_DAYS", default=3)
+
+# Destinatarios de alertas internas (p. ej. pedido pagado sin stock). Separados
+# por coma. Si está vacío, se avisa a los usuarios staff activos con correo.
+STAFF_ALERT_EMAILS = env.list("STAFF_ALERT_EMAILS", default=[])
 
 # --- Admin operativo (M8) ---
 # URL del admin NO predecible: definir en producción vía variable de entorno.
@@ -192,6 +224,9 @@ AXES_FAILURE_LIMIT = env.int("AXES_FAILURE_LIMIT", default=5)
 AXES_COOLOFF_TIME = env.int("AXES_COOLOFF_HOURS", default=1)  # horas
 AXES_RESET_ON_SUCCESS = True
 AXES_LOCKOUT_PARAMETERS = [["username", "ip_address"]]
+# Misma resolución de IP que DRF: detrás del proxy, la IP real del cliente
+# (no la del proxy, con la que un atacante bloquearía al admin legítimo).
+AXES_CLIENT_IP_CALLABLE = "apps.common.ip.client_ip"
 
 # --- Pasarela de pagos WOMPI (M6) ---
 WOMPI = {
@@ -202,6 +237,11 @@ WOMPI = {
     "CURRENCY": "COP",
     # Web Checkout de WOMPI (redirección).
     "CHECKOUT_URL": env("WOMPI_CHECKOUT_URL", default="https://checkout.wompi.co/p/"),
+    # API para consultar transacciones. Vacío = sandbox o producción según la llave.
+    "API_URL": env("WOMPI_API_URL", default=""),
 }
+# Confirma cada evento del webhook contra la API de WOMPI antes de aplicarlo
+# (defensa en profundidad si se filtra WOMPI_EVENTS_SECRET).
+WOMPI_VERIFY_WITH_API = env.bool("WOMPI_VERIFY_WITH_API", default=True)
 
 # En dev el navegador puede renderizar la API; el renderer HTML se añade en dev.py

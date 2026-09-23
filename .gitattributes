@@ -1,0 +1,2 @@
+# Los scripts se ejecutan en contenedores Linux: siempre LF (CRLF rompe sh).
+*.sh text eol=lf

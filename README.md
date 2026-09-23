@@ -42,6 +42,21 @@ npm run dev
 #   Web: http://localhost:3000
 ```
 
+## Calidad (lo mismo que ejecuta la CI en `.github/workflows/ci.yml`)
+
+```bash
+# Backend
+cd backend
+pip install -r requirements-dev.txt
+ruff check .
+DJANGO_SETTINGS_MODULE=config.settings.test python manage.py test            # SQLite, rápido
+DJANGO_SETTINGS_MODULE=config.settings.test_postgres python manage.py test   # PostgreSQL (docker compose up db)
+
+# Frontend
+cd frontend
+npm run lint && npm run typecheck && npm run build
+```
+
 ## Estructura
 
 ```
@@ -75,4 +90,4 @@ Guía completa y checklist OWASP en [`DEPLOY.md`](./DEPLOY.md).
 - CORS restringido al dominio del frontend; Habeas Data (Ley 1581) en checkout.
 - Backups automáticos de la DB; logs de pagos, inventario y accesos al admin.
 - Dependencias auditadas con `pip-audit` y `npm audit` (0 vulnerabilidades).
-- Suite de pruebas de flujos críticos (66 tests).
+- Suite de pruebas de flujos críticos (128 tests; concurrencia real en PostgreSQL).

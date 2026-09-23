@@ -4,19 +4,57 @@ Configuración de PRODUCCIÓN.
 DEBUG está desactivado y se activan las cabeceras de seguridad. La SECRET_KEY,
 los hosts permitidos y las credenciales deben venir SIEMPRE del entorno.
 """
+import os
+
+from django.core.exceptions import ImproperlyConfigured
+
 from .base import *  # noqa: F401,F403
-from .base import env
+from .base import ADMIN_2FA_ENABLED, REST_FRAMEWORK, env
 
 DEBUG = False
 
-# En producción es obligatorio definir hosts explícitos (sin comodines).
-ALLOWED_HOSTS = env("DJANGO_ALLOWED_HOSTS")
+# En producción es obligatorio definir hosts explícitos (sin comodines). Se
+# comprueba el entorno directamente: la lectura de base.py trae un valor por
+# defecto (localhost) que haría arrancar prod en silencio con hosts erróneos.
+if not os.environ.get("DJANGO_ALLOWED_HOSTS", "").strip():
+    raise ImproperlyConfigured("Define DJANGO_ALLOWED_HOSTS con los dominios reales de la API.")
+ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS")
+if "*" in ALLOWED_HOSTS:
+    raise ImproperlyConfigured("DJANGO_ALLOWED_HOSTS no puede contener '*' en producción.")
+
+# Orígenes de confianza para el CSRF del admin (HTTPS detrás del proxy).
+CSRF_TRUSTED_ORIGINS = env.list(
+    "CSRF_TRUSTED_ORIGINS",
+    default=[f"https://{host.lstrip('.')}" for host in ALLOWED_HOSTS],
+)
+
+# 2FA del admin obligatorio en producción. Escape explícito solo para el primer
+# arranque o una emergencia: ALLOW_ADMIN_WITHOUT_2FA=True.
+if not ADMIN_2FA_ENABLED and not env.bool("ALLOW_ADMIN_WITHOUT_2FA", default=False):
+    raise ImproperlyConfigured(
+        "ADMIN_2FA_ENABLED debe ser True en producción (enrola con `manage.py setup_2fa`)."
+    )
 
 # Falla el arranque si la SECRET_KEY sigue siendo el valor de desarrollo.
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 
+# Caché compartida obligatoria (throttling entre workers). Falla si falta.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": env("REDIS_URL"),
+        "KEY_PREFIX": "bullculture",
+    }
+}
+
+# Detrás del proxy TLS: por defecto 1 salto de confianza.
+TRUSTED_PROXY_COUNT = env.int("TRUSTED_PROXY_COUNT", default=1)
+REST_FRAMEWORK = {**REST_FRAMEWORK, "NUM_PROXIES": TRUSTED_PROXY_COUNT}
+
 # --- Cabeceras y transporte seguro (endurecimiento final en M10) ---
 SECURE_SSL_REDIRECT = True
+# El healthcheck interno del contenedor llega por HTTP directo (sin proxy).
+SECURE_REDIRECT_EXEMPT = [r"^api/health/$"]
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 SESSION_COOKIE_SECURE = True
@@ -53,6 +91,19 @@ EMAIL_USE_TLS = True
 # SendGrid: usuario "apikey" + API key como contraseña.
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="resend")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default=env("RESEND_API_KEY", default=""))
+
+# --- Monitoreo de errores (opcional): Sentry si se define SENTRY_DSN ---
+SENTRY_DSN = env("SENTRY_DSN", default="")
+if SENTRY_DSN:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=env("SENTRY_ENVIRONMENT", default="production"),
+        traces_sample_rate=env.float("SENTRY_TRACES_SAMPLE_RATE", default=0.0),
+        # Nunca enviar PII de clientes (cédula, dirección, correo) a terceros.
+        send_default_pii=False,
+    )
 
 # --- Logging de eventos críticos ---
 LOGGING = {

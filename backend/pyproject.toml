@@ -1,0 +1,17 @@
+# Configuración de herramientas de calidad del backend (no es un paquete).
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+extend-exclude = ["apps/*/migrations"]
+
+[tool.ruff.lint]
+# E/W: estilo · F: errores (imports sin usar, nombres indefinidos) ·
+# B: bugs probables (bugbear) · DJ: buenas prácticas de Django · UP: sintaxis moderna.
+select = ["E", "W", "F", "B", "DJ", "UP"]
+ignore = [
+    "E501",  # líneas largas: se deja al criterio (strings de mensajes en español)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Los settings usan `from .base import *` a propósito.
+"config/settings/*.py" = ["F403", "F405"]

@@ -8,12 +8,18 @@ try {
   apiOrigin = "";
 }
 
+const isDev = process.env.NODE_ENV !== "production";
+
 const csp = [
   "default-src 'self'",
-  // Next.js y Framer Motion requieren estilos/scripts inline; eval en dev.
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  // Next.js y Framer Motion requieren scripts/estilos inline. `unsafe-eval` solo
+  // en desarrollo (HMR/React Refresh); nunca en producción.
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "img-src 'self' data: blob: https://res.cloudinary.com https://picsum.photos https://fastly.picsum.photos",
+  // picsum solo sirve a los datos demo (seed_demo) en desarrollo.
+  `img-src 'self' data: blob: https://res.cloudinary.com${
+    isDev ? " https://picsum.photos https://fastly.picsum.photos" : ""
+  }`,
   "font-src 'self' https://fonts.gstatic.com",
   `connect-src 'self' ${apiOrigin}`.trim(),
   "frame-src https://checkout.wompi.co",

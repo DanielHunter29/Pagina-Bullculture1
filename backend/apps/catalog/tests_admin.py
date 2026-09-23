@@ -1,6 +1,5 @@
 """Pruebas de humo del admin: las páginas de alta cargan y se puede crear."""
 from datetime import timedelta
-from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -26,11 +25,14 @@ class AdminSmokeTests(TestCase):
             "admin:catalog_product_add",
             "admin:catalog_batch_add",
             "admin:discounts_volumediscountrule_add",
-            "admin:orders_order_add",
         ]
         for name in urls:
             with self.subTest(page=name):
                 self.assertEqual(self.client.get(reverse(name)).status_code, 200)
+
+    def test_orders_cannot_be_added_from_admin(self):
+        # Los pedidos solo nacen en el checkout (idempotencia, Ley 1581, firma WOMPI).
+        self.assertEqual(self.client.get(reverse("admin:orders_order_add")).status_code, 403)
 
     def test_create_category_via_admin(self):
         resp = self.client.post(

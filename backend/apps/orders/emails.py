@@ -5,14 +5,10 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 
+from apps.common.money import format_cop
 from apps.orders.models import Order
 
 logger = logging.getLogger(__name__)
-
-
-def format_cop(value) -> str:
-    """Formatea un importe en pesos colombianos, sin decimales."""
-    return "$ " + f"{int(value):,}".replace(",", ".")
 
 
 def send_order_confirmation(order: Order) -> bool:

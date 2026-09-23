@@ -1,6 +1,5 @@
 import type { CartItem } from "./cart";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+import { API_BASE } from "./config";
 
 export interface CheckoutInput {
   customer_name: string;
@@ -78,6 +77,49 @@ export function buildWompiUrl(data: CheckoutResponse): string {
     `redirect-url=${encodeURIComponent(data.redirect_url)}`,
   ].join("&");
   return `${data.checkout_url}?${params}`;
+}
+
+/** Códigos de conflicto de idempotencia del backend (409): hay que generar otra clave. */
+export const IDEMPOTENCY_CONFLICT_CODES = [
+  "idempotency_key_mismatch",
+  "idempotency_key_used",
+] as const;
+
+export function isIdempotencyConflict(err: unknown): boolean {
+  if (!(err instanceof CheckoutError) || err.status !== 409) return false;
+  const code = (err.data as { code?: string } | null)?.code;
+  return IDEMPOTENCY_CONFLICT_CODES.some((c) => c === code);
+}
+
+export function newIdempotencyKey(): string {
+  return typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random()}`;
+}
+
+/**
+ * Pide al backend que consulte la transacción directamente a WOMPI (id que
+ * WOMPI añade a la URL de redirección). Útil si el webhook aún no llegó.
+ */
+export async function reconcileOrder(
+  reference: string,
+  transactionId: string
+): Promise<OrderStatus | null> {
+  try {
+    const res = await fetch(
+      `${API_BASE}/orders/${encodeURIComponent(reference)}/reconcile/`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transaction_id: transactionId }),
+        cache: "no-store",
+      }
+    );
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
 }
 
 export async function getOrderStatus(reference: string): Promise<OrderStatus | null> {

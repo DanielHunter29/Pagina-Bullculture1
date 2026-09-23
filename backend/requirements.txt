@@ -3,6 +3,7 @@ Django==6.1.1
 djangorestframework==3.18.1
 django-filter==26.1
 psycopg[binary]==3.3.6
+redis==8.1.0  # caché compartida (throttling entre workers)
 django-environ==0.14.0
 django-cors-headers==4.9.0
 
@@ -16,5 +17,7 @@ reportlab==5.0.1
 gunicorn==26.2.0
 whitenoise==6.12.0
 
-# --- Calidad / seguridad (dev) ---
-pip-audit==2.7.3
+# --- Monitoreo de errores (opcional, activo si hay SENTRY_DSN) ---
+sentry-sdk==2.70.0
+
+# Herramientas de desarrollo/CI: requirements-dev.txt (no van en la imagen).

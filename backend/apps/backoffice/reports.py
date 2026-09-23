@@ -7,7 +7,7 @@ from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from apps.accounting.models import Expense, SupplierInvoice
-from apps.catalog.models import Product
+from apps.catalog.models import Product, sellable_stock_expr
 from apps.orders.models import Order, OrderItem
 
 ZERO = Decimal("0")
@@ -61,8 +61,13 @@ def product_profitability(d_from: date, d_to: date) -> list[dict]:
         .annotate(
             units=Coalesce(Sum("quantity"), 0),
             revenue=Coalesce(Sum("line_total"), ZERO, output_field=_DEC),
+            # Costo histórico (snapshot al vender); pedidos antiguos sin snapshot
+            # usan el costo actual del producto.
             cost=Coalesce(
-                Sum(F("quantity") * F("product__cost"), output_field=_DEC),
+                Sum(
+                    F("quantity") * Coalesce("unit_cost", "product__cost"),
+                    output_field=_DEC,
+                ),
                 ZERO,
                 output_field=_DEC,
             ),
@@ -87,13 +92,13 @@ def expenses_summary(d_from: date, d_to: date) -> dict:
 
 
 def low_stock_products():
-    """Productos activos cuyo stock disponible <= su umbral (alerta)."""
-    stock_expr = Coalesce(Sum("batches__quantity"), 0)
-    return [
-        p
-        for p in Product.objects.filter(is_active=True).annotate(stock=stock_expr)
-        if p.stock <= p.low_stock_threshold
-    ]
+    """Productos activos cuyo stock vendible (sin lotes vencidos) <= su umbral."""
+    return list(
+        Product.objects.filter(is_active=True)
+        .annotate(stock=sellable_stock_expr())
+        .filter(stock__lte=F("low_stock_threshold"))
+        .order_by("stock", "name")
+    )
 
 
 def dashboard_metrics() -> dict:
@@ -110,4 +115,8 @@ def dashboard_metrics() -> dict:
             ],
         ).count(),
         "low_stock": low_stock_products(),
+        "needs_review_count": Order.objects.filter(needs_review=True).count(),
+        "needs_review": list(
+            Order.objects.filter(needs_review=True).order_by("-created_at")[:20]
+        ),
     }

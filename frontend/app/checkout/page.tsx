@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import { BullMark } from "@/components/brand/BullMark";
@@ -11,6 +11,8 @@ import { formatCOP } from "@/lib/format";
 import {
   buildWompiUrl,
   CheckoutError,
+  isIdempotencyConflict,
+  newIdempotencyKey,
   postCheckout,
   type CheckoutInput,
 } from "@/lib/checkout";
@@ -38,11 +40,25 @@ export default function CheckoutPage() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const idempotencyKey = useRef<string>(
-    typeof crypto !== "undefined" && crypto.randomUUID
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random()}`
-  );
+  // Una clave por intento: se mantiene ante doble clic, pero se renueva si
+  // cambian el carrito o los datos (el backend rechaza la clave con otro contenido).
+  const idempotencyKey = useRef<string>(newIdempotencyKey());
+  useEffect(() => {
+    idempotencyKey.current = newIdempotencyKey();
+  }, [items, form]);
+
+  // Volver desde WOMPI con "atrás" restaura la página (bfcache) con la clave de
+  // un pago ya iniciado: se genera otra para que el reintento cree un pedido nuevo.
+  useEffect(() => {
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        idempotencyKey.current = newIdempotencyKey();
+        setLoading(false);
+      }
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
 
   const set = (k: keyof CheckoutInput, v: string | boolean) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -63,7 +79,10 @@ export default function CheckoutPage() {
       window.location.href = buildWompiUrl(data);
     } catch (err) {
       setLoading(false);
-      if (err instanceof CheckoutError) {
+      if (isIdempotencyConflict(err)) {
+        idempotencyKey.current = newIdempotencyKey();
+        setGeneralError("Tu intento anterior ya no es válido. Pulsa «Pagar» de nuevo.");
+      } else if (err instanceof CheckoutError) {
         if (err.status === 409) {
           setGeneralError(
             "Algunos productos ya no tienen stock suficiente. Ajusta tu carrito."
@@ -160,8 +179,15 @@ export default function CheckoutPage() {
               className="mt-0.5 h-4 w-4 shrink-0 rounded border-brand-border bg-brand-bg accent-brand-accent" />
             <span>
               Autorizo el tratamiento de mis datos personales conforme a la{" "}
-              <strong className="text-brand-ink">Ley 1581 de 2012</strong> y la política de
-              privacidad de {site.name}.
+              <strong className="text-brand-ink">Ley 1581 de 2012</strong> y la{" "}
+              <Link
+                href="/privacidad"
+                target="_blank"
+                className="text-brand-accent-bright underline underline-offset-2"
+              >
+                política de tratamiento de datos
+              </Link>{" "}
+              de {site.name}.
             </span>
           </label>
           {errors.data_processing_accepted && (

@@ -5,6 +5,19 @@
 # La terminación TLS/HTTPS la hace el proxy/plataforma delante de este stack.
 # ==========================================================================
 
+# Imagen y entorno comunes a los servicios de Django (backend, migrate, scheduler).
+x-django: &django
+  build:
+    context: ./backend
+    dockerfile: Dockerfile
+  image: bullculture-backend:latest
+  env_file:
+    - .env
+  environment:
+    DJANGO_SETTINGS_MODULE: config.settings.prod
+    POSTGRES_HOST: db
+    REDIS_URL: redis://redis:6379/0
+
 services:
   db:
     image: postgres:16-alpine
@@ -21,20 +34,33 @@ services:
       timeout: 5s
       retries: 10
 
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+  # Caché compartida (throttling de la API entre workers). Sin persistencia:
+  # si se reinicia solo se pierden contadores de rate limiting.
+  redis:
+    image: redis:7-alpine
     restart: always
-    command: >
-      sh -c "python manage.py collectstatic --noinput &&
-             python manage.py migrate --noinput &&
-             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 60"
-    env_file:
-      - .env
-    environment:
-      DJANGO_SETTINGS_MODULE: config.settings.prod
-      POSTGRES_HOST: db
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Migraciones como paso de release (una vez por despliegue, no en cada
+  # arranque de cada réplica). backend y scheduler esperan a que termine bien.
+  migrate:
+    <<: *django
+    restart: "no"
+    command: ["python", "manage.py", "migrate", "--noinput"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  backend:
+    <<: *django
+    restart: always
+    # Usa el CMD de la imagen (gunicorn). Workers: GUNICORN_CMD_ARGS en .env
+    # (por defecto 3; recomendado 2 × núcleos del VPS + 1).
     expose:
       - "8000"
     ports:
@@ -42,6 +68,27 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # Tareas periódicas (cada 15 min): reintento de correos de confirmación
+  # fallidos y expiración de pedidos pendientes abandonados.
+  scheduler:
+    <<: *django
+    restart: always
+    command: >
+      sh -c "while true; do python manage.py run_maintenance || echo 'mantenimiento fallo'; sleep 900; done"
+    healthcheck:
+      disable: true  # no sirve HTTP
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
   # Copias de seguridad automáticas diarias de la base de datos.
   db_backup:

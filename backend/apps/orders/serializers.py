@@ -1,20 +1,47 @@
 from rest_framework import serializers
 
-from apps.catalog.models import Product
+from apps.catalog.models import Product, sellable_stock_expr
 
 MONEY = dict(max_digits=12, decimal_places=2)
+
+# Máximo de líneas por carrito/pedido (evita peticiones que disparen miles de consultas).
+MAX_CART_LINES = 50
 
 
 # ---- Entrada: el navegador SOLO envía producto + cantidad (nunca precios) ----
 class CartItemInputSerializer(serializers.Serializer):
-    product = serializers.PrimaryKeyRelatedField(
-        queryset=Product.objects.filter(is_active=True)
-    )
+    product = serializers.IntegerField(min_value=1)
     quantity = serializers.IntegerField(min_value=1, max_value=999)
 
 
-class CartQuoteInputSerializer(serializers.Serializer):
-    items = CartItemInputSerializer(many=True, allow_empty=True)
+def resolve_cart_items(items):
+    """Sustituye los IDs de producto por instancias en UNA sola consulta.
+
+    Solo productos activos, con stock vendible (`sellable_stock`) anotado e
+    imágenes precargadas, para que el cálculo del carrito no haga N+1.
+    """
+    ids = {item["product"] for item in items}
+    products = (
+        Product.objects.filter(is_active=True, id__in=ids)
+        .annotate(sellable_stock=sellable_stock_expr())
+        .prefetch_related("images")
+        .in_bulk()
+    )
+    missing = sorted(ids - products.keys())
+    if missing:
+        raise serializers.ValidationError(
+            f"Productos inválidos o no disponibles: {', '.join(map(str, missing))}."
+        )
+    return [{**item, "product": products[item["product"]]} for item in items]
+
+
+class CartItemsMixin:
+    def validate_items(self, items):
+        return resolve_cart_items(items)
+
+
+class CartQuoteInputSerializer(CartItemsMixin, serializers.Serializer):
+    items = CartItemInputSerializer(many=True, allow_empty=True, max_length=MAX_CART_LINES)
 
 
 # ---- Salida: importes calculados en el backend ----
@@ -46,7 +73,7 @@ class CartQuoteOutputSerializer(serializers.Serializer):
 
 
 # ---- Checkout (invitado) ----
-class CheckoutSerializer(serializers.Serializer):
+class CheckoutSerializer(CartItemsMixin, serializers.Serializer):
     customer_name = serializers.CharField(max_length=150, min_length=3, trim_whitespace=True)
     customer_id_number = serializers.RegexField(
         r"^\d{6,10}$", error_messages={"invalid": "Cédula inválida (6 a 10 dígitos)."}
@@ -59,7 +86,7 @@ class CheckoutSerializer(serializers.Serializer):
     shipping_city = serializers.CharField(max_length=100, min_length=3, trim_whitespace=True)
     notes = serializers.CharField(max_length=1000, required=False, allow_blank=True, default="")
     data_processing_accepted = serializers.BooleanField()
-    items = CartItemInputSerializer(many=True, allow_empty=False)
+    items = CartItemInputSerializer(many=True, allow_empty=False, max_length=MAX_CART_LINES)
     idempotency_key = serializers.CharField(max_length=64, required=False, allow_blank=True)
 
     def validate_data_processing_accepted(self, value):

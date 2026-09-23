@@ -4,6 +4,83 @@
 ## Estado: listo para revisión / despliegue
 
 ## Hitos completados
+- [x] Fase 3 de endurecimiento (post-revisión, P2: calidad y operación) — 2026-09-23
+      - CI (`.github/workflows/ci.yml`): backend con ruff, makemigrations
+        --check, tests en PostgreSQL + Redis (incluye concurrencia real),
+        `check --deploy` y pip-audit; frontend con lint, typecheck, build y
+        npm audit; build de la imagen Docker y validación del compose de prod.
+      - Lint: ruff (`backend/pyproject.toml`, 0 hallazgos); ESLint 10 con flat
+        config (`frontend/eslint.config.mjs`, reemplaza `.eslintrc.json`);
+        scripts `lint` y `typecheck`.
+      - Tests: `apps/orders/tests_concurrency.py` (dos compradores por la
+        última unidad; webhooks duplicados simultáneos) con
+        `config.settings.test_postgres`; se omiten en SQLite.
+      - Refactors: `merge_cart_items`, `format_cop` en `apps.common.money`,
+        `frontend/lib/config.ts` (URL de la API única).
+      - Operación: requirements-dev.txt (pip-audit/ruff fuera de la imagen);
+        collectstatic en el build; servicio `migrate` de un solo uso;
+        `GUNICORN_CMD_ARGS`; healthcheck real (`/api/health/`: BD + caché) usado
+        por el contenedor; Sentry opcional (`SENTRY_DSN`, sin PII); índices
+        redundantes eliminados (migraciones catalog 0002 / orders 0005).
+      - PENDIENTE: e2e con Playwright (requiere añadir la dependencia con npm;
+        bloqueado en este entorno); confirmar el primer run verde de la CI.
+      - Puntos de control: 128 tests OK (2 de concurrencia omitidos en SQLite);
+        ruff limpio; `makemigrations --check` limpio; collectstatic con los
+        valores del Dockerfile OK; `check --deploy --fail-level WARNING` OK;
+        compose de prod válido.
+
+- [x] Fase 2 de endurecimiento (post-revisión, P1: pagos y cumplimiento) — 2026-09-23
+      - WOMPI: cada webhook firmado se confirma con `GET /transactions/{id}` a la
+        API (fuente de verdad; si la API no responde se aplica el evento firmado;
+        si WOMPI no reconoce la transacción se ignora). Monto o moneda que no
+        coinciden en un pago aprobado → `needs_review` + alerta (sin repetir).
+        Payload no-objeto → 400.
+      - Conciliación: `POST /api/orders/<ref>/reconcile/` consulta la transacción
+        a WOMPI (id de la redirección) si el webhook aún no llegó; la usa
+        /checkout/resultado.
+      - Idempotencia: huella SHA-256 del checkout; misma clave con otro contenido
+        o con pago cerrado → 409 con `code`; carrera concurrente → reutiliza el
+        pedido (no 500). Frontend renueva la clave al cambiar carrito/datos y al
+        volver desde WOMPI (bfcache).
+      - `run_maintenance` (servicio `scheduler`, cada 15 min): reintenta correos
+        de confirmación fallidos y expira pendientes (`expirado`); un expirado
+        se aprueba igual si llega un pago tardío.
+      - Admin: estado de pago siempre de solo lectura; ítems e importes
+        bloqueados si el pedido no está pendiente; no se crean pedidos a mano.
+      - Costo histórico: `OrderItem.unit_cost` (migración 0004) usado en la
+        rentabilidad (fallback al costo actual en pedidos antiguos).
+      - Prod: falla sin DJANGO_ALLOWED_HOSTS o con '*'; CSRF_TRUSTED_ORIGINS;
+        2FA obligatorio (escape ALLOW_ADMIN_WITHOUT_2FA); CORS sin credenciales.
+      - Frontend: CSP sin 'unsafe-eval' ni picsum en producción; página
+        /privacidad (Ley 1581/Decreto 1377) enlazada desde checkout y footer.
+      - PENDIENTE (usuario): datos reales del responsable en `lib/site.ts`
+        (`legal`) y validación legal del texto de /privacidad.
+      - Puntos de control: 122 tests backend OK; `makemigrations --check`
+        limpio; prod verificado (arranca OK / falla sin hosts, con '*', sin 2FA);
+        compose prod válido; frontend tsc + build.
+
+- [x] Fase 1 de endurecimiento (post-revisión, P0) — 2026-09-23
+      - Stock vendible: `Batch.objects.sellable()` + `sellable_stock_expr()`;
+        los lotes vencidos NO cuentan como stock (catálogo, carrito, checkout,
+        reportes) y FEFO nunca los despacha.
+      - Sobreventa: si al aprobar el pago no hay stock vendible suficiente, el
+        pedido se marca `needs_review` (+ `review_reason`, migración 0003) y se
+        alerta por correo al staff (`STAFF_ALERT_EMAILS` o staff activo) tras el
+        commit. Visible en el admin (filtro) y en el dashboard.
+      - Carrito/checkout: máximo 50 líneas; productos resueltos en UNA consulta
+        (stock anotado + imágenes precargadas) → consultas constantes.
+      - Proxy/caché: Redis como caché compartida (obligatoria en prod),
+        `TRUSTED_PROXY_COUNT` (DRF `NUM_PROXIES`) y `apps.common.ip.client_ip`
+        usado por DRF, axes (`AXES_CLIENT_IP_CALLABLE`) y logs de login.
+      - Backups: `pg_dump -Fc` a temporal, verificado con `pg_restore --list`
+        antes de rotar; un fallo no borra backups buenos. `.gitattributes` fuerza
+        LF en `*.sh`.
+      - Secretos: credencial eliminada de este archivo; `.semgrep/` ignorado.
+      - Puntos de control: 87 tests OK; `makemigrations --check` limpio;
+        `check --deploy` (prod) 0 issues y prod falla sin `REDIS_URL`; script de
+        backup probado con stubs (éxito, pg_dump caído, volcado corrupto); compose
+        dev/prod validados. Pendiente: validar en vivo con Docker (Postgres+Redis).
+
 - [x] M10 Hardening final, QA y despliegue — 2026-09-22
       - Cabeceras de seguridad: middleware propio (`apps/common/middleware.py`)
         con CSP + Permissions-Policy + COOP + nosniff en el backend; en el
@@ -270,9 +347,7 @@
 ## Pendientes / deuda técnica
 - Ejecutar `docker compose up --build` con Docker Desktop abierto para validación
   end-to-end en vivo (config ya validada estáticamente).
-- ESLint 10 usa flat config; `.eslintrc.json` podría requerir migrar a
-  `eslint.config.mjs` al usar `npm run lint` (no bloquea el build). Revisar en M3.
-- `next lint` está deprecado en Next 16; migrar a ESLint CLI cuando toque.
+- (Resuelto en Fase 3) ESLint migrado a flat config y `npm run lint` usa el CLI.
 
 ## API disponible para el frontend (M2)
 - GET /api/categories/  ·  GET /api/categories/{slug}/
@@ -310,8 +385,8 @@
   definir ADMIN_URL con un valor aleatorio propio.
 - 2FA desactivado por defecto (ADMIN_2FA_ENABLED=False) para no bloquear dev;
   activarlo en prod y enrolar con `manage.py setup_2fa <usuario>`.
-- Superusuario local de prueba: jefe / BullAdmin2026! (solo en la BD sqlite local,
-  no versionada).
+- Superusuario local de prueba: credenciales fuera del repositorio (nunca
+  documentar contraseñas aquí).
 - Rentabilidad usa el costo ACTUAL del producto (no snapshot al vender); revisar
   si se requiere costo histórico.
 

@@ -88,7 +88,12 @@ export function Footer() {
         </div>
 
         <div className="mt-10 flex flex-col gap-2 border-t border-brand-border pt-6 text-xs text-brand-ink-muted sm:flex-row sm:justify-between">
-          <p>© {year} {site.name}. Todos los derechos reservados.</p>
+          <p>
+            © {year} {site.name}. Todos los derechos reservados. ·{" "}
+            <Link href="/privacidad" className="hover:text-brand-accent-bright">
+              Política de tratamiento de datos
+            </Link>
+          </p>
           <p>Hecho en Bogotá · Colombia</p>
         </div>
       </div>

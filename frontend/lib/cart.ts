@@ -1,3 +1,5 @@
+import { API_BASE } from "./config";
+
 /**
  * Carrito del lado del cliente.
  * El navegador SOLO guarda producto + cantidad (persistido en localStorage).
@@ -53,9 +55,6 @@ export function saveCart(items: CartItem[]): void {
     /* almacenamiento no disponible (modo privado, etc.) */
   }
 }
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 export async function fetchQuote(
   items: CartItem[],

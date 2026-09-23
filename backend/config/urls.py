@@ -1,8 +1,9 @@
 """Rutas raíz del proyecto BULLCULTURE."""
 from django.conf import settings
 from django.contrib import admin
-from django.http import JsonResponse
 from django.urls import include, path
+
+from apps.common.health import health
 
 # 2FA del admin: si está habilitado, se refuerza el sitio de admin con OTP.
 if settings.ADMIN_2FA_ENABLED:
@@ -13,11 +14,6 @@ if settings.ADMIN_2FA_ENABLED:
 admin.site.site_header = "BULLCULTURE · Administración"
 admin.site.site_title = "BULLCULTURE"
 admin.site.index_title = "Gestión de la tienda"
-
-
-def health(_request):
-    """Endpoint simple para verificar que la API responde."""
-    return JsonResponse({"status": "ok", "service": "bullculture-api"})
 
 
 urlpatterns = [

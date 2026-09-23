@@ -38,6 +38,7 @@ class Order(TimeStampedModel):
         DECLINED = "rechazado", "Rechazado"
         VOIDED = "anulado", "Anulado"
         ERROR = "error", "Error"
+        EXPIRED = "expirado", "Expirado"
 
     class FulfillmentStatus(models.TextChoices):
         PENDING = "pendiente", "Pendiente"
@@ -61,6 +62,11 @@ class Order(TimeStampedModel):
         null=True,
         blank=True,
         editable=False,
+    )
+    # Huella (SHA-256) del contenido del checkout: la misma clave con otro
+    # carrito/datos se rechaza en vez de devolver un pedido viejo.
+    idempotency_fingerprint = models.CharField(
+        "Huella de idempotencia", max_length=64, blank=True, editable=False
     )
 
     # --- Datos del cliente invitado (checkout M6) ---
@@ -127,13 +133,23 @@ class Order(TimeStampedModel):
     stock_deducted = models.BooleanField("Stock descontado", default=False)
     email_sent = models.BooleanField("Correo enviado", default=False)
 
+    # --- Revisión manual (p. ej. pago aprobado sin stock suficiente) ---
+    needs_review = models.BooleanField(
+        "Requiere revisión",
+        default=False,
+        help_text="Se marca automáticamente si hubo un problema al confirmar el pago. "
+        "Desmárcalo cuando el caso esté resuelto.",
+    )
+    review_reason = models.TextField("Motivo de revisión", blank=True)
+
     class Meta:
         verbose_name = "Pedido"
         verbose_name_plural = "Pedidos"
         ordering = ["-created_at"]
+        # `reference` ya tiene índice por ser unique.
         indexes = [
-            models.Index(fields=["reference"]),
             models.Index(fields=["payment_status"]),
+            models.Index(fields=["needs_review"]),
         ]
 
     def __str__(self):
@@ -179,6 +195,15 @@ class OrderItem(TimeStampedModel):
     product_name = models.CharField("Nombre (snapshot)", max_length=200, blank=True)
     product_sku = models.CharField("SKU (snapshot)", max_length=40, blank=True)
     unit_price = _money_field("Precio unitario")
+    # Costo unitario al momento de la venta (rentabilidad histórica real).
+    unit_cost = models.DecimalField(
+        "Costo unitario (snapshot)",
+        max_digits=MONEY_MAX_DIGITS,
+        decimal_places=MONEY_DECIMAL_PLACES,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
     quantity = models.PositiveIntegerField("Cantidad", validators=[MinValueValidator(1)])
     line_total = _money_field("Total de línea")
 

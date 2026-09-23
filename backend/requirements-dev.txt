@@ -1,0 +1,5 @@
+# Dependencias de desarrollo y CI (la imagen de producción usa requirements.txt).
+-r requirements.txt
+
+pip-audit==2.7.3
+ruff==0.16.8
