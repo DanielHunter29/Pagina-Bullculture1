@@ -7,12 +7,17 @@ import { CheckCircle2, Clock, XCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/components/cart/CartProvider";
-import { getOrderStatus, type OrderStatus } from "@/lib/checkout";
+import { getOrderStatus, reconcileOrder, type OrderStatus } from "@/lib/checkout";
 import { formatCOP } from "@/lib/format";
+
+const MAX_ATTEMPTS = 8;
+const POLL_MS = 2500;
 
 function ResultInner() {
   const params = useSearchParams();
   const reference = params.get("ref");
+  // WOMPI añade `id` (transacción) a la URL de redirección.
+  const transactionId = params.get("id");
   const { clear } = useCart();
   const [order, setOrder] = useState<OrderStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,9 +30,14 @@ function ResultInner() {
     }
     let active = true;
     let attempts = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
 
     async function poll() {
-      const status = await getOrderStatus(reference!);
+      let status = await getOrderStatus(reference!);
+      // Si el webhook aún no llegó, el backend consulta la transacción a WOMPI.
+      if (transactionId && status?.payment_status === "pendiente") {
+        status = (await reconcileOrder(reference!, transactionId)) ?? status;
+      }
       if (!active) return;
       setOrder(status);
       setLoading(false);
@@ -35,20 +45,17 @@ function ResultInner() {
         cleared.current = true;
         clear(); // vacía el carrito tras un pago aprobado
       }
-      // Si sigue pendiente, reintenta (el webhook puede tardar).
-      if (
-        (!status || status.payment_status === "pendiente") &&
-        attempts < 5
-      ) {
+      if ((!status || status.payment_status === "pendiente") && attempts < MAX_ATTEMPTS) {
         attempts += 1;
-        setTimeout(poll, 2500);
+        timer = setTimeout(poll, POLL_MS);
       }
     }
     poll();
     return () => {
       active = false;
+      if (timer) clearTimeout(timer);
     };
-  }, [reference, clear]);
+  }, [reference, transactionId, clear]);
 
   if (!reference) {
     return (
@@ -92,6 +99,18 @@ function ResultInner() {
         body={`Tu pedido ${
           order?.reference ?? reference
         } está pendiente de confirmación. Te avisaremos por correo cuando se apruebe.`}
+      />
+    );
+  }
+
+  if (status === "expirado") {
+    return (
+      <Message
+        icon={<XCircle className="h-16 w-16 text-brand-ink-muted" />}
+        title="El pedido expiró"
+        body={`No recibimos el pago del pedido ${
+          order?.reference ?? reference
+        } a tiempo. Si ya pagaste, escríbenos y lo revisamos; si no, puedes intentarlo de nuevo.`}
       />
     );
   }

@@ -4,6 +4,36 @@
 ## Estado: listo para revisión / despliegue
 
 ## Hitos completados
+- [x] Fase 2 de endurecimiento (post-revisión, P1: pagos y cumplimiento) — 2026-09-23
+      - WOMPI: cada webhook firmado se confirma con `GET /transactions/{id}` a la
+        API (fuente de verdad; si la API no responde se aplica el evento firmado;
+        si WOMPI no reconoce la transacción se ignora). Monto o moneda que no
+        coinciden en un pago aprobado → `needs_review` + alerta (sin repetir).
+        Payload no-objeto → 400.
+      - Conciliación: `POST /api/orders/<ref>/reconcile/` consulta la transacción
+        a WOMPI (id de la redirección) si el webhook aún no llegó; la usa
+        /checkout/resultado.
+      - Idempotencia: huella SHA-256 del checkout; misma clave con otro contenido
+        o con pago cerrado → 409 con `code`; carrera concurrente → reutiliza el
+        pedido (no 500). Frontend renueva la clave al cambiar carrito/datos y al
+        volver desde WOMPI (bfcache).
+      - `run_maintenance` (servicio `scheduler`, cada 15 min): reintenta correos
+        de confirmación fallidos y expira pendientes (`expirado`); un expirado
+        se aprueba igual si llega un pago tardío.
+      - Admin: estado de pago siempre de solo lectura; ítems e importes
+        bloqueados si el pedido no está pendiente; no se crean pedidos a mano.
+      - Costo histórico: `OrderItem.unit_cost` (migración 0004) usado en la
+        rentabilidad (fallback al costo actual en pedidos antiguos).
+      - Prod: falla sin DJANGO_ALLOWED_HOSTS o con '*'; CSRF_TRUSTED_ORIGINS;
+        2FA obligatorio (escape ALLOW_ADMIN_WITHOUT_2FA); CORS sin credenciales.
+      - Frontend: CSP sin 'unsafe-eval' ni picsum en producción; página
+        /privacidad (Ley 1581/Decreto 1377) enlazada desde checkout y footer.
+      - PENDIENTE (usuario): datos reales del responsable en `lib/site.ts`
+        (`legal`) y validación legal del texto de /privacidad.
+      - Puntos de control: 122 tests backend OK; `makemigrations --check`
+        limpio; prod verificado (arranca OK / falla sin hosts, con '*', sin 2FA);
+        compose prod válido; frontend tsc + build.
+
 - [x] Fase 1 de endurecimiento (post-revisión, P0) — 2026-09-23
       - Stock vendible: `Batch.objects.sellable()` + `sellable_stock_expr()`;
         los lotes vencidos NO cuentan como stock (catálogo, carrito, checkout,

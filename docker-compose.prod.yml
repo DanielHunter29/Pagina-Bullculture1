@@ -58,6 +58,29 @@ services:
       redis:
         condition: service_healthy
 
+  # Tareas periódicas (cada 15 min): reintento de correos de confirmación
+  # fallidos y expiración de pedidos pendientes abandonados.
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: always
+    command: >
+      sh -c "while true; do python manage.py run_maintenance || echo 'mantenimiento fallo'; sleep 900; done"
+    env_file:
+      - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      POSTGRES_HOST: db
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started  # el backend aplica las migraciones
+
   # Copias de seguridad automáticas diarias de la base de datos.
   db_backup:
     image: postgres:16-alpine

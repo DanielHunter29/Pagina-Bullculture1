@@ -20,6 +20,7 @@ WOMPI_PUBLIC_KEY=... WOMPI_PRIVATE_KEY=... WOMPI_EVENTS_SECRET=... WOMPI_INTEGRI
 EMAIL_HOST=smtp.resend.com EMAIL_HOST_USER=resend EMAIL_HOST_PASSWORD=<API key>
 DEFAULT_FROM_EMAIL=BULLCULTURE <no-reply@bullculture.co>
 CLOUDINARY_URL=cloudinary://...
+ADMIN_2FA_ENABLED=True es OBLIGATORIO: prod no arranca sin él
 TRUSTED_PROXY_COUNT=1                 # proxies delante del backend (nginx/traefik)
 STAFF_ALERT_EMAILS=operaciones@bullculture.co   # alertas de pedidos por revisar
 # REDIS_URL la define docker-compose.prod.yml (redis://redis:6379/0)
@@ -39,6 +40,14 @@ docker compose -f docker-compose.prod.yml exec backend python manage.py setup_2f
 ```
 
 - `collectstatic` y `migrate` corren automáticamente al iniciar.
+- El servicio `scheduler` ejecuta `run_maintenance` cada 15 min: reintenta los
+  correos de confirmación fallidos (hasta `EMAIL_RETRY_MAX_AGE_DAYS`) y marca
+  como `expirado` los pedidos pendientes con más de `PENDING_ORDER_TTL_HOURS`.
+  Un pedido expirado se aprueba igual si WOMPI confirma un pago tardío.
+- El backend necesita **salida HTTPS a `production.wompi.co`** (o `sandbox.`):
+  cada webhook se confirma contra la API de WOMPI y la página de resultado
+  concilia el pago si el webhook tarda. Si la API no responde, se aplica el
+  evento firmado (queda en el log).
 - Los estáticos del admin se sirven con **whitenoise**.
 - Pon un proxy TLS (nginx/traefik/plataforma) delante del backend: **HTTPS obligatorio**.
 - El proxy debe **añadir** la IP del cliente a `X-Forwarded-For` (nginx:

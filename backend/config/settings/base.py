@@ -183,7 +183,8 @@ else:
 
 # --- CORS: solo el dominio del frontend puede consumir la API ---
 CORS_ALLOWED_ORIGINS = env("CORS_ALLOWED_ORIGINS")
-CORS_ALLOW_CREDENTIALS = True
+# La API no usa cookies ni sesión (authentication_classes=[]): sin credenciales.
+CORS_ALLOW_CREDENTIALS = False
 
 # --- URL pública del frontend (para redirecciones de pago) ---
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
@@ -194,6 +195,12 @@ FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
 DEFAULT_FROM_EMAIL = env(
     "DEFAULT_FROM_EMAIL", default="BULLCULTURE <no-reply@bullculture.co>"
 )
+
+# Mantenimiento periódico (comando run_maintenance).
+# Horas tras las cuales un pedido pendiente se marca como expirado.
+PENDING_ORDER_TTL_HOURS = env.int("PENDING_ORDER_TTL_HOURS", default=24)
+# Días durante los que se reintenta un correo de confirmación fallido.
+EMAIL_RETRY_MAX_AGE_DAYS = env.int("EMAIL_RETRY_MAX_AGE_DAYS", default=3)
 
 # Destinatarios de alertas internas (p. ej. pedido pagado sin stock). Separados
 # por coma. Si está vacío, se avisa a los usuarios staff activos con correo.
@@ -230,6 +237,11 @@ WOMPI = {
     "CURRENCY": "COP",
     # Web Checkout de WOMPI (redirección).
     "CHECKOUT_URL": env("WOMPI_CHECKOUT_URL", default="https://checkout.wompi.co/p/"),
+    # API para consultar transacciones. Vacío = sandbox o producción según la llave.
+    "API_URL": env("WOMPI_API_URL", default=""),
 }
+# Confirma cada evento del webhook contra la API de WOMPI antes de aplicarlo
+# (defensa en profundidad si se filtra WOMPI_EVENTS_SECRET).
+WOMPI_VERIFY_WITH_API = env.bool("WOMPI_VERIFY_WITH_API", default=True)
 
 # En dev el navegador puede renderizar la API; el renderer HTML se añade en dev.py

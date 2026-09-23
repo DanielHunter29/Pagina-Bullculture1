@@ -21,6 +21,19 @@ export const site = {
     tiktok: "https://tiktok.com/@bullculturesupplements",
     instagramHandle: "@bullculturesupplements",
   },
+  /**
+   * Datos del RESPONSABLE del tratamiento (Ley 1581 de 2012, Decreto 1377 de
+   * 2013) usados en /privacidad. PENDIENTE: completar con los datos reales y
+   * hacer validar el texto de la política por un asesor legal antes de publicar.
+   */
+  legal: {
+    legalName: "BULLCULTURE", // razón social o nombre del titular del negocio
+    taxId: "PENDIENTE", // NIT o cédula
+    address: "PENDIENTE, Bogotá D.C., Colombia",
+    privacyEmail: "hola@bullculture.co", // canal para consultas y reclamos
+    phone: "PENDIENTE",
+    policyDate: "2026-09-23", // fecha de entrada en vigencia de la política
+  },
 } as const;
 
 /** Enlaces de navegación principal (se conectan al catálogo en M4). */

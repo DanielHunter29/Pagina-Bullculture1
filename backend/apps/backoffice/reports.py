@@ -61,8 +61,13 @@ def product_profitability(d_from: date, d_to: date) -> list[dict]:
         .annotate(
             units=Coalesce(Sum("quantity"), 0),
             revenue=Coalesce(Sum("line_total"), ZERO, output_field=_DEC),
+            # Costo histórico (snapshot al vender); pedidos antiguos sin snapshot
+            # usan el costo actual del producto.
             cost=Coalesce(
-                Sum(F("quantity") * F("product__cost"), output_field=_DEC),
+                Sum(
+                    F("quantity") * Coalesce("unit_cost", "product__cost"),
+                    output_field=_DEC,
+                ),
                 ZERO,
                 output_field=_DEC,
             ),

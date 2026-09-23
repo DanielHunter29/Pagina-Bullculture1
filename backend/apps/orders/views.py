@@ -15,8 +15,19 @@ from .serializers import (
     CheckoutSerializer,
     OrderStatusSerializer,
 )
-from .services import check_stock, create_order, process_wompi_transaction, quote_cart
-from .wompi import generate_integrity_signature, verify_event_signature
+from .services import (
+    IdempotencyConflict,
+    check_stock,
+    create_order,
+    process_wompi_transaction,
+    quote_cart,
+)
+from .wompi import (
+    UNAVAILABLE,
+    fetch_transaction,
+    generate_integrity_signature,
+    verify_event_signature,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -87,11 +98,21 @@ class CheckoutView(APIView):
             "shipping_city": data["shipping_city"],
             "notes": data.get("notes", ""),
         }
-        order, _created = create_order(
-            customer=customer,
-            items=items,
-            idempotency_key=data.get("idempotency_key") or None,
-        )
+        try:
+            order, _created = create_order(
+                customer=customer,
+                items=items,
+                idempotency_key=data.get("idempotency_key") or None,
+            )
+        except IdempotencyConflict as exc:
+            messages = {
+                IdempotencyConflict.MISMATCH: "El intento de pago cambió. Vuelve a intentarlo.",
+                IdempotencyConflict.ALREADY_PROCESSED: "Este intento de pago ya se procesó. Vuelve a intentarlo.",
+            }
+            return Response(
+                {"detail": messages[exc.code], "code": exc.code},
+                status=status.HTTP_409_CONFLICT,
+            )
 
         amount_in_cents = int(order.total * 100)
         currency = settings.WOMPI["CURRENCY"]
@@ -120,9 +141,14 @@ class WompiWebhookView(APIView):
 
     def post(self, request):
         payload = request.data
+        if not isinstance(payload, dict):
+            return Response({"detail": "Payload inválido."}, status=status.HTTP_400_BAD_REQUEST)
 
         valid = verify_event_signature(payload)
-        tx = (payload.get("data") or {}).get("transaction") or {}
+        data = payload.get("data")
+        tx = data.get("transaction") if isinstance(data, dict) else None
+        if not isinstance(tx, dict):
+            tx = {}
         WebhookEvent.objects.create(
             transaction_id=tx.get("id") or "",
             reference=tx.get("reference") or "",
@@ -136,15 +162,82 @@ class WompiWebhookView(APIView):
                 {"detail": "Firma inválida."}, status=status.HTTP_401_UNAUTHORIZED
             )
 
-        order = process_wompi_transaction(tx)
+        if settings.WOMPI_VERIFY_WITH_API:
+            confirmed = fetch_transaction(tx.get("id"))
+            if confirmed is None or (
+                confirmed is not UNAVAILABLE and confirmed.get("reference") != tx.get("reference")
+            ):
+                # Firma válida pero WOMPI no reconoce la transacción: posible
+                # secreto filtrado. No se aplica nada.
+                logger.error(
+                    "Webhook firmado con transacción no confirmada por WOMPI: %s (%s)",
+                    tx.get("id"),
+                    tx.get("reference"),
+                )
+                return Response({"received": True}, status=status.HTTP_200_OK)
+            if confirmed is UNAVAILABLE:
+                logger.warning(
+                    "API WOMPI no disponible; se aplica el evento firmado %s", tx.get("id")
+                )
+            else:
+                tx = confirmed  # la API es la fuente de verdad
 
-        # Correo de confirmación (idempotente) tras confirmar el pago. Fuera de
-        # la transacción de BD para no retener el lock durante el envío SMTP.
-        if order and order.payment_status == Order.PaymentStatus.APPROVED:
-            send_order_confirmation(order)
+        order = process_wompi_transaction(tx)
+        _send_confirmation_if_paid(order)
 
         # Siempre 200 ante eventos verificados para que WOMPI no reintente.
         return Response({"received": True}, status=status.HTTP_200_OK)
+
+
+def _send_confirmation_if_paid(order):
+    """Correo de confirmación (idempotente) tras confirmar el pago. Fuera de la
+    transacción de BD para no retener el lock durante el envío SMTP. Si falla,
+    el comando `run_maintenance` lo reintenta."""
+    if order and order.payment_status == Order.PaymentStatus.APPROVED:
+        send_order_confirmation(order)
+
+
+class OrderReconcileView(APIView):
+    """Concilia un pedido consultando su transacción directamente a WOMPI.
+
+    La usa la página de resultado cuando el webhook aún no ha llegado: WOMPI
+    redirige con `?id=<transacción>`. Solo se confía en la respuesta de la API
+    de WOMPI (nunca en datos del navegador) y la transacción debe pertenecer a
+    la referencia del pedido.
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [AnonRateThrottle]
+
+    def post(self, request, reference):
+        transaction_id = str(request.data.get("transaction_id") or "").strip()
+        if not transaction_id or len(transaction_id) > 64:
+            return Response(
+                {"detail": "transaction_id requerido."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        order = Order.objects.filter(reference=reference).first()
+        if order is None:
+            return Response(
+                {"detail": "Pedido no encontrado."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        if order.payment_status != Order.PaymentStatus.APPROVED:
+            confirmed = fetch_transaction(transaction_id)
+            if confirmed is UNAVAILABLE:
+                return Response(
+                    {"detail": "No pudimos consultar el pago. Intenta de nuevo."},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+            if confirmed is None or confirmed.get("reference") != order.reference:
+                return Response(
+                    {"detail": "Transacción no encontrada para este pedido."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            order = process_wompi_transaction(confirmed)
+            _send_confirmation_if_paid(order)
+
+        return Response(OrderStatusSerializer(order).data)
 
 
 class OrderStatusView(APIView):

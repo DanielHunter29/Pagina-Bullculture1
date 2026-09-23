@@ -4,13 +4,36 @@ Configuración de PRODUCCIÓN.
 DEBUG está desactivado y se activan las cabeceras de seguridad. La SECRET_KEY,
 los hosts permitidos y las credenciales deben venir SIEMPRE del entorno.
 """
+import os
+
+from django.core.exceptions import ImproperlyConfigured
+
 from .base import *  # noqa: F401,F403
-from .base import REST_FRAMEWORK, env
+from .base import ADMIN_2FA_ENABLED, REST_FRAMEWORK, env
 
 DEBUG = False
 
-# En producción es obligatorio definir hosts explícitos (sin comodines).
-ALLOWED_HOSTS = env("DJANGO_ALLOWED_HOSTS")
+# En producción es obligatorio definir hosts explícitos (sin comodines). Se
+# comprueba el entorno directamente: la lectura de base.py trae un valor por
+# defecto (localhost) que haría arrancar prod en silencio con hosts erróneos.
+if not os.environ.get("DJANGO_ALLOWED_HOSTS", "").strip():
+    raise ImproperlyConfigured("Define DJANGO_ALLOWED_HOSTS con los dominios reales de la API.")
+ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS")
+if "*" in ALLOWED_HOSTS:
+    raise ImproperlyConfigured("DJANGO_ALLOWED_HOSTS no puede contener '*' en producción.")
+
+# Orígenes de confianza para el CSRF del admin (HTTPS detrás del proxy).
+CSRF_TRUSTED_ORIGINS = env.list(
+    "CSRF_TRUSTED_ORIGINS",
+    default=[f"https://{host.lstrip('.')}" for host in ALLOWED_HOSTS],
+)
+
+# 2FA del admin obligatorio en producción. Escape explícito solo para el primer
+# arranque o una emergencia: ALLOW_ADMIN_WITHOUT_2FA=True.
+if not ADMIN_2FA_ENABLED and not env.bool("ALLOW_ADMIN_WITHOUT_2FA", default=False):
+    raise ImproperlyConfigured(
+        "ADMIN_2FA_ENABLED debe ser True en producción (enrola con `manage.py setup_2fa`)."
+    )
 
 # Falla el arranque si la SECRET_KEY sigue siendo el valor de desarrollo.
 SECRET_KEY = env("DJANGO_SECRET_KEY")
