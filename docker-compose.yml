@@ -1,6 +1,6 @@
 # ==========================================================================
 # BULLCULTURE — Orquestación de desarrollo (backend Django + PostgreSQL)
-# El frontend (Next.js) se despliega en Vercel; para desarrollo se corre
+# En producción el frontend va en docker-compose.prod.yml; para desarrollo se corre
 # aparte con `npm run dev`. Aquí solo levantamos la API y la base de datos.
 # ==========================================================================
 

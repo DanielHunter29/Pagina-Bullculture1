@@ -1,7 +1,8 @@
 #!/bin/sh
 # Smoke test EN VIVO del stack de producción (docker-compose.prod.yml).
 #
-# Levanta db + redis + migrate + backend (gunicorn) + scheduler + db_backup con
+# Levanta db + redis + migrate + backend (gunicorn) + frontend (Next.js) +
+# scheduler + db_backup con
 # un .env efímero (secretos aleatorios) y comprueba los controles de seguridad
 # del despliegue: healthcheck real, HTTPS obligatorio, cabeceras, hosts
 # permitidos, admin oculto con 2FA, webhook sin firma rechazado, errores sin
@@ -42,6 +43,8 @@ POSTGRES_USER=bullculture
 POSTGRES_PASSWORD=$(rand 24)
 WOMPI_EVENTS_SECRET=$(rand 24)
 WOMPI_INTEGRITY_SECRET=$(rand 24)
+NEXT_PUBLIC_API_URL=https://$HOST/api
+NEXT_PUBLIC_SITE_URL=https://bullculture.co
 EOF
 
 cleanup() {
@@ -63,21 +66,26 @@ req() { curl -s -H "Host: $HOST" -H "X-Forwarded-Proto: https" "$@"; }
 echo "==> Levantando el stack de producción"
 $COMPOSE up -d --build
 
-echo "==> Esperando a que el backend esté healthy"
-i=0
-while :; do
-  cid=$($COMPOSE ps -q backend)
-  status=$( [ -n "$cid" ] && docker inspect -f '{{.State.Health.Status}}' "$cid" 2>/dev/null || echo starting)
-  [ "$status" = healthy ] && break
-  i=$((i + 1))
-  if [ "$i" -gt 60 ]; then
-    FAILS=1
-    echo "El backend no llegó a healthy (estado: $status)" >&2
-    exit 1
-  fi
-  sleep 3
-done
-ok "backend healthy (healthcheck del contenedor)"
+# Espera a que el healthcheck del contenedor de un servicio pase a "healthy".
+wait_healthy() {
+  echo "==> Esperando a que $1 esté healthy"
+  i=0
+  while :; do
+    cid=$($COMPOSE ps -q "$1")
+    status=$( [ -n "$cid" ] && docker inspect -f '{{.State.Health.Status}}' "$cid" 2>/dev/null || echo starting)
+    [ "$status" = healthy ] && break
+    i=$((i + 1))
+    if [ "$i" -gt 60 ]; then
+      FAILS=1
+      echo "$1 no llegó a healthy (estado: $status)" >&2
+      exit 1
+    fi
+    sleep 3
+  done
+  ok "$1 healthy (healthcheck del contenedor)"
+}
+wait_healthy backend
+wait_healthy frontend
 
 echo "==> Comprobaciones"
 
@@ -137,6 +145,17 @@ esac
 # Errores sin trazas (DEBUG=False).
 body=$(req "$BASE/api/no-existe/")
 echo "$body" | grep -qi 'traceback\|DEBUG = True' && fail "404 expone detalles de depuración" || ok "404 sin trazas"
+
+# Frontend (Next.js) detrás de Caddy: responde y envía sus cabeceras de seguridad.
+FRONT=http://127.0.0.1:3000
+code=$(curl -s -o /dev/null -w '%{http_code}' "$FRONT/privacidad")
+[ "$code" = 200 ] && ok "frontend /privacidad 200" || fail "frontend /privacidad -> $code"
+fheaders=$(curl -s -o /dev/null -D - "$FRONT/privacidad" | tr -d '\r' | tr 'A-Z' 'a-z')
+for h in "content-security-policy: " "strict-transport-security: " "x-frame-options: deny" "x-content-type-options: nosniff"; do
+  echo "$fheaders" | grep -q "^$h" && ok "frontend cabecera ${h%%:*}" || fail "frontend sin cabecera $h"
+done
+echo "$fheaders" | grep -q "unsafe-eval" && fail "la CSP del frontend permite unsafe-eval" || ok "CSP del frontend sin unsafe-eval"
+echo "$fheaders" | grep -q "^x-powered-by" && fail "el frontend expone X-Powered-By" || ok "frontend sin X-Powered-By"
 
 # Backup real con verificación pg_restore.
 out=$($COMPOSE exec -T db_backup sh /scripts/backup_db.sh 2>&1) \

@@ -4,6 +4,15 @@
 ## Estado: listo para revisión / despliegue
 
 ## Hitos completados
+- [x] Despliegue en un solo VPS (sin Vercel) — 2026-09-24
+      - `frontend/Dockerfile` (Next.js standalone, usuario sin privilegios,
+        healthcheck en /robots.txt) y servicio `frontend` en
+        docker-compose.prod.yml (127.0.0.1:3000).
+      - `deploy/Caddyfile`: HTTPS automático para bullculture.co (+ www →
+        redirección) y api.bullculture.co; validado en CI.
+      - Smoke test de prod ampliado: frontend healthy + cabeceras de seguridad.
+      - DEPLOY.md / README / .env.example actualizados.
+
 - [x] Cierre de pendientes (post-fase 3) — 2026-09-24
       - CI: ESLint fijado en ^9 (el 10 rompía eslint-config-next) y 3 errores
         `react-hooks/set-state-in-effect` corregidos (CartProvider deriva
@@ -354,7 +363,7 @@
 - **Tema dark-first**: `<html class="dark">`; `:root` = tema claro (secciones ivory),
   `.dark` = tema oscuro por defecto. Tokens semánticos shadcn en HSL + tokens
   `brand.*` con los hex exactos de la paleta.
-- **Frontend fuera de compose**: se desplegará en Vercel; en dev corre con `npm run dev`.
+- **Frontend**: en producción corre en el VPS (servicio `frontend` de docker-compose.prod.yml, 2026-09-24); en dev con `npm run dev`.
 - **URL admin no predecible / 2FA / rate limiting**: se implementan en M8 (login seguro).
 - **Stock por lotes (M1)**: el stock disponible NO se almacena en Product; se deriva
   de la suma de `Batch.quantity` (fuente de verdad para inventario y vencimientos).
