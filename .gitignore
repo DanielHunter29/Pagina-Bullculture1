@@ -46,3 +46,8 @@ Thumbs.db
 # === Auditorías ===
 pip-audit.json
 npm-audit.json
+
+# Playwright (tests e2e)
+/frontend/test-results/
+/frontend/playwright-report/
+/frontend/blob-report/

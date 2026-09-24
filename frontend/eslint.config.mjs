@@ -5,5 +5,12 @@ import nextVitals from "eslint-config-next/core-web-vitals";
 // porque los plugins de eslint-config-next (react, import, jsx-a11y) no soportan ESLint 10.
 export default defineConfig([
   ...nextVitals,
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"]),
+  globalIgnores([
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+    "playwright-report/**",
+    "test-results/**",
+  ]),
 ]);

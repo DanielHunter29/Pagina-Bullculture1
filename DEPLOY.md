@@ -89,7 +89,58 @@ docker compose -f docker-compose.prod.yml exec backend python manage.py setup_2f
 - Configura el webhook de eventos a `https://api.bullculture.co/api/webhooks/wompi/`.
 - El backend verifica el checksum de cada evento con `WOMPI_EVENTS_SECRET`.
 
-## 5. Post-despliegue
+## 5. Paso a paso de seguridad antes de abrir la tienda
+
+Lo automatizable ya está verificado por la CI en cada PR: tests del backend en
+PostgreSQL + Redis, `check --deploy`, `pip-audit`/`npm audit`, tests e2e
+(Playwright) y un **smoke test en vivo del stack de producción**
+(`scripts/smoke_prod.sh`: healthcheck, HTTPS obligatorio, cabeceras, hosts,
+admin oculto con 2FA, webhook sin firma rechazado, errores sin trazas y backup
+verificado). Lo que sigue depende de ti y se hace **una vez**, en este orden:
+
+1. **Secretos propios** (nunca reutilices los de `.env.example`):
+   - `DJANGO_SECRET_KEY`: `python -c "import secrets; print(secrets.token_urlsafe(64))"`.
+   - `POSTGRES_PASSWORD`: `python -c "import secrets; print(secrets.token_urlsafe(24))"`.
+   - `ADMIN_URL`: ruta aleatoria propia, p. ej. `panel-<8 caracteres aleatorios>/`.
+   - Guarda el `.env` solo en el servidor (permisos `chmod 600 .env`); nunca en git.
+2. **Claves reales de terceros** en el `.env` del servidor:
+   - WOMPI (producción): `WOMPI_PUBLIC_KEY`, `WOMPI_PRIVATE_KEY`,
+     `WOMPI_EVENTS_SECRET`, `WOMPI_INTEGRITY_SECRET`.
+   - Correo: `EMAIL_HOST_PASSWORD` (Resend/SendGrid) y dominio verificado
+     (SPF/DKIM) para `DEFAULT_FROM_EMAIL`.
+   - `CLOUDINARY_URL`; opcional `SENTRY_DSN`.
+3. **Dominio y proxy TLS** delante del backend (nginx/traefik/plataforma) con
+   certificado válido, reenviando `X-Forwarded-For` y `X-Forwarded-Proto`
+   (ver sección 2). Ajusta `TRUSTED_PROXY_COUNT` si hay CDN + proxy.
+4. **Firewall del VPS**: abre solo 22 (SSH con llave, sin contraseña), 80 y
+   443. PostgreSQL, Redis y el puerto 8000 no deben quedar expuestos (el
+   compose ya los limita a la red interna / `127.0.0.1`).
+5. **Arranque y 2FA del admin**:
+   ```bash
+   docker compose -f docker-compose.prod.yml up -d --build
+   docker compose -f docker-compose.prod.yml exec backend python manage.py createsuperuser
+   docker compose -f docker-compose.prod.yml exec backend python manage.py setup_2fa <usuario>
+   ```
+   Escanea el QR con tu app de autenticación y comprueba que el login en
+   `https://api.bullculture.co/<ADMIN_URL>` pide el código. No dejes
+   `ALLOW_ADMIN_WITHOUT_2FA` activado.
+6. **Webhook de WOMPI** apuntando a `https://api.bullculture.co/api/webhooks/wompi/`
+   (sección 4) y un pago de prueba de punta a punta (sección 6).
+7. **Datos legales (Ley 1581/2012)**: completa `legal` en
+   `frontend/lib/site.ts` (razón social, NIT/cédula, dirección, teléfono) y
+   haz validar el texto de `/privacidad` por un asesor legal. Mientras diga
+   `PENDIENTE`, no publiques la tienda.
+8. **Backups fuera del servidor**: programa una copia periódica del volumen
+   `db_backups` a S3/Backblaze y **prueba una restauración** una vez
+   (comando en la sección 2).
+9. **Verificación final**: `curl -I https://api.bullculture.co/api/health/`
+   (200 y cabecera HSTS) y los puntos de la sección 6.
+
+Mantenimiento: revisa cada mes las alertas de Dependabot/`npm audit`/`pip-audit`,
+los pedidos marcados `needs_review` en el admin y los logs de accesos fallidos
+(axes).
+
+## 6. Post-despliegue
 
 - [ ] `https://bullculture.co/sitemap.xml` y `/robots.txt` accesibles.
 - [ ] Rich Results Test (Google) valida el JSON-LD de un producto.
