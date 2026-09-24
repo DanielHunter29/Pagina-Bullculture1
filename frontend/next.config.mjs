@@ -46,6 +46,9 @@ const securityHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
+  // La imagen Docker (frontend/Dockerfile) define NEXT_OUTPUT=standalone para
+  // empaquetar solo el servidor y sus dependencias. `next start` usa el build normal.
+  ...(process.env.NEXT_OUTPUT === "standalone" ? { output: "standalone" } : {}),
   poweredByHeader: false, // no exponer "X-Powered-By"
   agentRules: false, // no autogenerar AGENTS.md / CLAUDE.md
   images: {

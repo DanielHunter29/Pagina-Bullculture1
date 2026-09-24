@@ -138,7 +138,7 @@ jobs:
           retention-days: 7
 
   docker:
-    name: Imagen Docker del backend
+    name: Imágenes Docker + stack de producción
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -146,5 +146,7 @@ jobs:
         run: docker build -t bullculture-backend:ci backend
       - name: Validar docker-compose de producción
         run: cp .env.example .env && docker compose -f docker-compose.prod.yml config -q
+      - name: Validar Caddyfile
+        run: docker run --rm -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
       - name: Smoke test en vivo del stack de producción (seguridad + backup)
         run: rm -f .env && sh scripts/smoke_prod.sh

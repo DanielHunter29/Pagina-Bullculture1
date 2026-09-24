@@ -14,7 +14,7 @@ Monorepo con **backend Django + DRF + PostgreSQL** y **frontend Next.js**.
 | Estilos    | Tailwind CSS 3 (tokens de marca) · shadcn/ui |
 | Animación  | Framer Motion |
 | Infra dev  | Docker Compose (backend + DB) |
-| Despliegue | Backend + DB en Docker · Frontend en Vercel |
+| Despliegue | Todo en un VPS con Docker (frontend + backend + DB) · HTTPS con Caddy |
 
 ## Requisitos previos
 
@@ -80,7 +80,7 @@ sh scripts/smoke_prod.sh
 
 ## Despliegue
 
-Backend + PostgreSQL en Docker (`docker-compose.prod.yml`) y frontend en Vercel.
+Todo en un VPS: frontend, backend, PostgreSQL y Redis en Docker (`docker-compose.prod.yml`) con Caddy como proxy HTTPS (`deploy/Caddyfile`).
 Guía completa y checklist OWASP en [`DEPLOY.md`](./DEPLOY.md).
 
 ## Seguridad

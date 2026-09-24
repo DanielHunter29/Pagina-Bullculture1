@@ -1,0 +1,12 @@
+node_modules/
+.next/
+out/
+build/
+e2e/
+test-results/
+playwright-report/
+blob-report/
+.env
+.env.*
+.git/
+*.log

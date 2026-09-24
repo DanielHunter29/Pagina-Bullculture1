@@ -1,8 +1,9 @@
 # ==========================================================================
-# BULLCULTURE — Orquestación de PRODUCCIÓN (backend + PostgreSQL + backups).
-# El frontend (Next.js) se despliega en Vercel.
+# BULLCULTURE — Orquestación de PRODUCCIÓN en un solo VPS:
+# frontend (Next.js) + backend (Django) + PostgreSQL + Redis + backups.
 # Requiere un .env con DJANGO_SETTINGS_MODULE=config.settings.prod y secretos.
-# La terminación TLS/HTTPS la hace el proxy/plataforma delante de este stack.
+# La terminación TLS/HTTPS la hace Caddy en el host (deploy/Caddyfile):
+#   bullculture.co -> 127.0.0.1:3000 (frontend) · api.bullculture.co -> 127.0.0.1:8000 (backend)
 # ==========================================================================
 
 # Imagen y entorno comunes a los servicios de Django (backend, migrate, scheduler).
@@ -72,6 +73,20 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+
+  # Web pública (Next.js standalone). Las NEXT_PUBLIC_* se incrustan al construir
+  # la imagen: si cambian en .env, reconstruye con `up -d --build`.
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?Define NEXT_PUBLIC_API_URL en .env}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?Define NEXT_PUBLIC_SITE_URL en .env}
+    image: bullculture-frontend:latest
+    restart: always
+    ports:
+      - "127.0.0.1:3000:3000"  # detrás de Caddy (HTTPS)
 
   # Tareas periódicas (cada 15 min): reintento de correos de confirmación
   # fallidos y expiración de pedidos pendientes abandonados.

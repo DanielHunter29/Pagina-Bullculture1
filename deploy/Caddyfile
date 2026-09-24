@@ -1,0 +1,24 @@
+# ==========================================================================
+# BULLCULTURE — Caddy (proxy HTTPS en el VPS, fuera de Docker)
+# Copia este archivo a /etc/caddy/Caddyfile y ejecuta: systemctl reload caddy
+# Caddy obtiene y renueva los certificados HTTPS solo (Let's Encrypt).
+# Cambia los dominios si usas otros (y ajusta .env en consecuencia).
+# ==========================================================================
+
+# www -> dominio principal
+www.bullculture.co {
+	redir https://bullculture.co{uri} permanent
+}
+
+# Web pública (contenedor "frontend")
+bullculture.co {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3000
+}
+
+# API + admin (contenedor "backend"). Caddy añade X-Forwarded-For y
+# X-Forwarded-Proto: por eso TRUSTED_PROXY_COUNT=1 en .env.
+api.bullculture.co {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8000
+}

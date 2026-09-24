@@ -1,6 +1,12 @@
 # Despliegue de BULLCULTURE
 
-Backend + PostgreSQL en **Docker**; frontend en **Vercel**.
+Todo en **un solo VPS** con Docker: frontend (Next.js), backend (Django),
+PostgreSQL, Redis y backups. **Caddy** (en el host) pone el HTTPS delante:
+
+```
+navegador ──HTTPS──> Caddy ──> bullculture.co      → 127.0.0.1:3000 (frontend)
+                           └─> api.bullculture.co  → 127.0.0.1:8000 (backend)
+```
 
 ## 1. Variables de entorno (producción)
 
@@ -24,6 +30,9 @@ ADMIN_2FA_ENABLED=True es OBLIGATORIO: prod no arranca sin él
 TRUSTED_PROXY_COUNT=1                 # proxies delante del backend (nginx/traefik)
 STAFF_ALERT_EMAILS=operaciones@bullculture.co   # alertas de pedidos por revisar
 # REDIS_URL la define docker-compose.prod.yml (redis://redis:6379/0)
+# Frontend (se incrustan al construir la imagen; si cambian: up -d --build)
+NEXT_PUBLIC_API_URL=https://api.bullculture.co/api
+NEXT_PUBLIC_SITE_URL=https://bullculture.co
 ```
 
 Genera la SECRET_KEY:
@@ -31,7 +40,7 @@ Genera la SECRET_KEY:
 python -c "import secrets; print(secrets.token_urlsafe(64))"
 ```
 
-## 2. Backend + DB (Docker)
+## 2. Stack completo (Docker)
 
 ```bash
 docker compose -f docker-compose.prod.yml up -d --build
@@ -57,12 +66,14 @@ docker compose -f docker-compose.prod.yml exec backend python manage.py setup_2f
   concilia el pago si el webhook tarda. Si la API no responde, se aplica el
   evento firmado (queda en el log).
 - Los estáticos del admin se sirven con **whitenoise**.
-- Pon un proxy TLS (nginx/traefik/plataforma) delante del backend: **HTTPS obligatorio**.
-- El proxy debe **añadir** la IP del cliente a `X-Forwarded-For` (nginx:
-  `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`) y enviar
-  `X-Forwarded-Proto`. Si hay más de un proxy en cadena (p. ej. CDN + nginx),
-  ajusta `TRUSTED_PROXY_COUNT`; de ello dependen el rate limiting y el bloqueo
-  de axes.
+- **HTTPS obligatorio** con Caddy en el host: `deploy/Caddyfile` →
+  `/etc/caddy/Caddyfile` (certificados automáticos de Let's Encrypt). Caddy
+  añade `X-Forwarded-For` y `X-Forwarded-Proto`, por eso `TRUSTED_PROXY_COUNT=1`.
+  Si pones otro proxy o CDN delante (p. ej. Cloudflare con proxy activado),
+  súmalo en `TRUSTED_PROXY_COUNT`; de ello dependen el rate limiting y el
+  bloqueo de axes.
+- El servicio `frontend` (Next.js standalone, `frontend/Dockerfile`) escucha en
+  `127.0.0.1:3000`; su healthcheck consulta `/robots.txt`.
 - **Redis** (servicio `redis`) es la caché compartida del rate limiting;
   `config.settings.prod` no arranca sin `REDIS_URL` (compose ya la define).
 - **Backups**: el servicio `db_backup` genera a diario un `pg_dump` en formato
@@ -76,13 +87,19 @@ docker compose -f docker-compose.prod.yml exec backend python manage.py setup_2f
   Recomendado: copiar periódicamente el volumen `db_backups` fuera del servidor
   (S3/Backblaze); hoy los backups viven en el mismo host que la base.
 
-## 3. Frontend (Vercel)
+## 3. Frontend (en el mismo VPS)
 
-- Importa el repo, root del proyecto: `frontend/`.
-- Variables: `NEXT_PUBLIC_API_URL=https://api.bullculture.co/api`,
-  `NEXT_PUBLIC_SITE_URL=https://bullculture.co`.
-- Vercel provee HTTPS y CDN. Las cabeceras de seguridad (CSP, etc.) están en
-  `next.config.mjs`.
+- Lo construye y arranca el mismo `docker compose ... up -d --build` (servicio
+  `frontend`). No hace falta Vercel.
+- `NEXT_PUBLIC_API_URL` y `NEXT_PUBLIC_SITE_URL` (en `.env`) se incrustan en la
+  imagen al construirla: si cambias el dominio, reconstruye.
+- Cualquier cambio en el código del frontend (p. ej. `frontend/lib/site.ts`)
+  se publica con `git pull` + `docker compose -f docker-compose.prod.yml up -d --build`.
+- Las cabeceras de seguridad (CSP, HSTS, etc.) están en `next.config.mjs`.
+- Actualizar a una versión nueva:
+  ```bash
+  git pull && docker compose -f docker-compose.prod.yml up -d --build
+  ```
 
 ## 4. WOMPI
 
@@ -95,8 +112,8 @@ Lo automatizable ya está verificado por la CI en cada PR: tests del backend en
 PostgreSQL + Redis, `check --deploy`, `pip-audit`/`npm audit`, tests e2e
 (Playwright) y un **smoke test en vivo del stack de producción**
 (`scripts/smoke_prod.sh`: healthcheck, HTTPS obligatorio, cabeceras, hosts,
-admin oculto con 2FA, webhook sin firma rechazado, errores sin trazas y backup
-verificado). Lo que sigue depende de ti y se hace **una vez**, en este orden:
+admin oculto con 2FA, webhook sin firma rechazado, errores sin trazas, frontend
+con sus cabeceras y backup verificado). Lo que sigue depende de ti y se hace **una vez**, en este orden:
 
 1. **Secretos propios** (nunca reutilices los de `.env.example`):
    - `DJANGO_SECRET_KEY`: `python -c "import secrets; print(secrets.token_urlsafe(64))"`.
@@ -109,12 +126,12 @@ verificado). Lo que sigue depende de ti y se hace **una vez**, en este orden:
    - Correo: `EMAIL_HOST_PASSWORD` (Resend/SendGrid) y dominio verificado
      (SPF/DKIM) para `DEFAULT_FROM_EMAIL`.
    - `CLOUDINARY_URL`; opcional `SENTRY_DSN`.
-3. **Dominio y proxy TLS** delante del backend (nginx/traefik/plataforma) con
-   certificado válido, reenviando `X-Forwarded-For` y `X-Forwarded-Proto`
-   (ver sección 2). Ajusta `TRUSTED_PROXY_COUNT` si hay CDN + proxy.
+3. **DNS y HTTPS**: registros A de `bullculture.co`, `www` y `api` hacia la IP
+   del VPS; instala Caddy y copia `deploy/Caddyfile` a `/etc/caddy/Caddyfile`
+   (ver sección 2). Ajusta `TRUSTED_PROXY_COUNT` si pones una CDN delante.
 4. **Firewall del VPS**: abre solo 22 (SSH con llave, sin contraseña), 80 y
-   443. PostgreSQL, Redis y el puerto 8000 no deben quedar expuestos (el
-   compose ya los limita a la red interna / `127.0.0.1`).
+   443. PostgreSQL, Redis y los puertos 3000/8000 no deben quedar expuestos
+   (el compose ya los limita a la red interna / `127.0.0.1`).
 5. **Arranque y 2FA del admin**:
    ```bash
    docker compose -f docker-compose.prod.yml up -d --build
@@ -129,12 +146,14 @@ verificado). Lo que sigue depende de ti y se hace **una vez**, en este orden:
 7. **Datos legales (Ley 1581/2012)**: completa `legal` en
    `frontend/lib/site.ts` (razón social, NIT/cédula, dirección, teléfono) y
    haz validar el texto de `/privacidad` por un asesor legal. Mientras diga
-   `PENDIENTE`, no publiques la tienda.
+   `PENDIENTE`, no publiques la tienda. Publica el cambio reconstruyendo
+   (`git pull` + `up -d --build`).
 8. **Backups fuera del servidor**: programa una copia periódica del volumen
    `db_backups` a S3/Backblaze y **prueba una restauración** una vez
    (comando en la sección 2).
-9. **Verificación final**: `curl -I https://api.bullculture.co/api/health/`
-   (200 y cabecera HSTS) y los puntos de la sección 6.
+9. **Verificación final**: `curl -I https://api.bullculture.co/api/health/` y
+   `curl -I https://bullculture.co` (200 y cabecera HSTS en ambos) y los puntos
+   de la sección 6.
 
 Mantenimiento: revisa cada mes las alertas de Dependabot/`npm audit`/`pip-audit`,
 los pedidos marcados `needs_review` en el admin y los logs de accesos fallidos
