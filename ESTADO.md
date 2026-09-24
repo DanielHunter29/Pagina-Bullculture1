@@ -9,7 +9,7 @@
         --check, tests en PostgreSQL + Redis (incluye concurrencia real),
         `check --deploy` y pip-audit; frontend con lint, typecheck, build y
         npm audit; build de la imagen Docker y validación del compose de prod.
-      - Lint: ruff (`backend/pyproject.toml`, 0 hallazgos); ESLint 10 con flat
+      - Lint: ruff (`backend/pyproject.toml`, 0 hallazgos); ESLint 9 con flat
         config (`frontend/eslint.config.mjs`, reemplaza `.eslintrc.json`);
         scripts `lint` y `typecheck`.
       - Tests: `apps/orders/tests_concurrency.py` (dos compradores por la
@@ -22,8 +22,13 @@
         `GUNICORN_CMD_ARGS`; healthcheck real (`/api/health/`: BD + caché) usado
         por el contenedor; Sentry opcional (`SENTRY_DSN`, sin PII); índices
         redundantes eliminados (migraciones catalog 0002 / orders 0005).
+      - Corrección CI (2026-09-24): el primer run falló en el lint del frontend
+        (ESLint 10 no es compatible con eslint-plugin-react de
+        eslint-config-next) → ESLint fijado en ^9; corregidos 3 errores
+        `react-hooks/set-state-in-effect` (CartProvider deriva quote/loading;
+        /checkout/resultado). Quitados del repo los `.semgrep/` subidos por error.
       - PENDIENTE: e2e con Playwright (requiere añadir la dependencia con npm;
-        bloqueado en este entorno); confirmar el primer run verde de la CI.
+        bloqueado en este entorno); confirmar el run verde de la CI tras la corrección.
       - Puntos de control: 128 tests OK (2 de concurrencia omitidos en SQLite);
         ruff limpio; `makemigrations --check` limpio; collectstatic con los
         valores del Dockerfile OK; `check --deploy --fail-level WARNING` OK;

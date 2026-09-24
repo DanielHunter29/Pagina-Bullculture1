@@ -24,10 +24,8 @@ function ResultInner() {
   const cleared = useRef(false);
 
   useEffect(() => {
-    if (!reference) {
-      setLoading(false);
-      return;
-    }
+    // Sin referencia se muestra el mensaje de error directamente (ver abajo).
+    if (!reference) return;
     let active = true;
     let attempts = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
