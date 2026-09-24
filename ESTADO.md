@@ -4,12 +4,34 @@
 ## Estado: listo para revisión / despliegue
 
 ## Hitos completados
+- [x] Cierre de pendientes (post-fase 3) — 2026-09-24
+      - CI: ESLint fijado en ^9 (el 10 rompía eslint-config-next) y 3 errores
+        `react-hooks/set-state-in-effect` corregidos (CartProvider deriva
+        quote/loading; /checkout/resultado).
+      - E2E con Playwright (`frontend/e2e/`, `npm run test:e2e`, job `e2e` en
+        CI): cabeceras de seguridad, catálogo → detalle → carrito → checkout
+        hasta WOMPI (interceptado) validando la firma de integridad, total
+        calculado en el servidor aunque se manipule localStorage, Habeas Data
+        obligatorio, /privacidad y 404. `dev_sqlite` acepta `SQLITE_PATH`.
+      - Accesibilidad: los campos del checkout ahora están asociados a su
+        etiqueta (`id` = `htmlFor`).
+      - Validación EN VIVO del stack de producción: `scripts/smoke_prod.sh`
+        (job `docker` de la CI) levanta el compose de prod y comprueba
+        healthcheck, migrate, scheduler, HTTPS, cabeceras, hosts, admin oculto
+        con 2FA, webhook sin firma, errores sin trazas y backup verificado.
+        Comprobaciones validadas localmente contra gunicorn + PostgreSQL 16 +
+        Redis reales (14/14 OK) y backup_db.sh contra PostgreSQL real.
+      - Eliminados del repo los `.semgrep/` subidos por error.
+      - Paso a paso de seguridad para producción: DEPLOY.md, sección 5.
+      - PENDIENTE (usuario): pasos 1–9 de DEPLOY.md §5 (secretos y claves
+        reales, TLS, firewall, 2FA, datos legales, backups externos).
+
 - [x] Fase 3 de endurecimiento (post-revisión, P2: calidad y operación) — 2026-09-23
       - CI (`.github/workflows/ci.yml`): backend con ruff, makemigrations
         --check, tests en PostgreSQL + Redis (incluye concurrencia real),
         `check --deploy` y pip-audit; frontend con lint, typecheck, build y
         npm audit; build de la imagen Docker y validación del compose de prod.
-      - Lint: ruff (`backend/pyproject.toml`, 0 hallazgos); ESLint 10 con flat
+      - Lint: ruff (`backend/pyproject.toml`, 0 hallazgos); ESLint 9 con flat
         config (`frontend/eslint.config.mjs`, reemplaza `.eslintrc.json`);
         scripts `lint` y `typecheck`.
       - Tests: `apps/orders/tests_concurrency.py` (dos compradores por la
@@ -22,8 +44,7 @@
         `GUNICORN_CMD_ARGS`; healthcheck real (`/api/health/`: BD + caché) usado
         por el contenedor; Sentry opcional (`SENTRY_DSN`, sin PII); índices
         redundantes eliminados (migraciones catalog 0002 / orders 0005).
-      - PENDIENTE: e2e con Playwright (requiere añadir la dependencia con npm;
-        bloqueado en este entorno); confirmar el primer run verde de la CI.
+      - (Resuelto 2026-09-24) e2e con Playwright y CI corregida.
       - Puntos de control: 128 tests OK (2 de concurrencia omitidos en SQLite);
         ruff limpio; `makemigrations --check` limpio; collectstatic con los
         valores del Dockerfile OK; `check --deploy --fail-level WARNING` OK;
@@ -79,7 +100,7 @@
       - Puntos de control: 87 tests OK; `makemigrations --check` limpio;
         `check --deploy` (prod) 0 issues y prod falla sin `REDIS_URL`; script de
         backup probado con stubs (éxito, pg_dump caído, volcado corrupto); compose
-        dev/prod validados. Pendiente: validar en vivo con Docker (Postgres+Redis).
+        dev/prod validados. (Validación en vivo: smoke test de prod en CI, 2026-09-24.)
 
 - [x] M10 Hardening final, QA y despliegue — 2026-09-22
       - Cabeceras de seguridad: middleware propio (`apps/common/middleware.py`)
@@ -391,7 +412,7 @@
   si se requiere costo histórico.
 
 ## Próximo paso
-- Proyecto completo (M0–M10). Antes de producción: (1) `docker compose up` en vivo
-  con Docker Desktop para validar concurrencia (select_for_update en Postgres);
-  (2) claves reales de WOMPI, Cloudinary y SMTP; (3) Rich Results Test + Lighthouse
-  con el sitio desplegado; (4) activar ADMIN_2FA_ENABLED y enrolar 2FA.
+- Seguir el paso a paso de seguridad de `DEPLOY.md` §5 (secretos y claves
+  reales, TLS, firewall, 2FA, datos legales de /privacidad, backups externos)
+  y luego la verificación post-despliegue (§6: Rich Results, Lighthouse, pago
+  de prueba WOMPI).

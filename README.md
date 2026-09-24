@@ -55,6 +55,11 @@ DJANGO_SETTINGS_MODULE=config.settings.test_postgres python manage.py test   # P
 # Frontend
 cd frontend
 npm run lint && npm run typecheck && npm run build
+npx playwright install chromium   # solo la primera vez
+PYTHON=python npm run test:e2e    # e2e: levanta backend (SQLite + demo) y frontend
+
+# Stack de producción en vivo (Docker): seguridad + backup
+sh scripts/smoke_prod.sh
 ```
 
 ## Estructura

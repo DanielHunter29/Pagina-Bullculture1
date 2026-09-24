@@ -46,13 +46,17 @@ export function useCart() {
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
-  const [quote, setQuote] = useState<Quote | null>(null);
-  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [lastQuote, setLastQuote] = useState<Quote | null>(null);
+  // Ítems para los que terminó la última petición de quote (con o sin éxito).
+  const [settledItems, setSettledItems] = useState<CartItem[] | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const reqId = useRef(0);
 
   // Hidratar desde localStorage al montar.
   useEffect(() => {
+    // localStorage solo existe en el cliente: leerlo en el render rompería la
+    // hidratación del HTML del servidor.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setItems(loadCart());
     setHydrated(true);
   }, []);
@@ -61,26 +65,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!hydrated) return;
     saveCart(items);
-
-    if (items.length === 0) {
-      setQuote(null);
-      setQuoteLoading(false);
-      return;
-    }
+    if (items.length === 0) return;
 
     const controller = new AbortController();
     const current = ++reqId.current;
-    setQuoteLoading(true);
     const t = setTimeout(() => {
       fetchQuote(items, controller.signal)
         .then((q) => {
-          if (current === reqId.current) setQuote(q);
+          if (current === reqId.current) setLastQuote(q);
         })
         .catch(() => {
           /* se conserva el último quote válido */
         })
         .finally(() => {
-          if (current === reqId.current) setQuoteLoading(false);
+          if (current === reqId.current) setSettledItems(items);
         });
     }, 250);
 
@@ -121,6 +119,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const closeCart = useCallback(() => setIsOpen(false), []);
 
   const count = items.reduce((n, i) => n + i.quantity, 0);
+  // Derivados: sin ítems no hay quote; cargando mientras el quote no
+  // corresponda a los ítems actuales.
+  const quote = items.length > 0 ? lastQuote : null;
+  const quoteLoading = hydrated && items.length > 0 && settledItems !== items;
 
   return (
     <CartContext.Provider

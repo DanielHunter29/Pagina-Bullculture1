@@ -134,19 +134,19 @@ export default function CheckoutPage() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Nombre completo" name="customer_name" error={errors.customer_name}>
-                <input className={inputClass} value={form.customer_name}
+                <input id="customer_name" className={inputClass} value={form.customer_name}
                   onChange={(e) => set("customer_name", e.target.value)} autoComplete="name" required />
               </Field>
               <Field label="Cédula" name="customer_id_number" error={errors.customer_id_number}>
-                <input className={inputClass} value={form.customer_id_number} inputMode="numeric"
+                <input id="customer_id_number" className={inputClass} value={form.customer_id_number} inputMode="numeric"
                   onChange={(e) => set("customer_id_number", e.target.value)} required />
               </Field>
               <Field label="Teléfono" name="customer_phone" error={errors.customer_phone}>
-                <input className={inputClass} value={form.customer_phone} inputMode="tel"
+                <input id="customer_phone" className={inputClass} value={form.customer_phone} inputMode="tel"
                   onChange={(e) => set("customer_phone", e.target.value)} autoComplete="tel" required />
               </Field>
               <Field label="Correo" name="customer_email" error={errors.customer_email}>
-                <input className={inputClass} type="email" value={form.customer_email}
+                <input id="customer_email" className={inputClass} type="email" value={form.customer_email}
                   onChange={(e) => set("customer_email", e.target.value)} autoComplete="email" required />
               </Field>
             </div>
@@ -158,15 +158,15 @@ export default function CheckoutPage() {
             </legend>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Dirección" name="shipping_address" error={errors.shipping_address} full>
-                <input className={inputClass} value={form.shipping_address}
+                <input id="shipping_address" className={inputClass} value={form.shipping_address}
                   onChange={(e) => set("shipping_address", e.target.value)} autoComplete="street-address" required />
               </Field>
               <Field label="Ciudad" name="shipping_city" error={errors.shipping_city}>
-                <input className={inputClass} value={form.shipping_city}
+                <input id="shipping_city" className={inputClass} value={form.shipping_city}
                   onChange={(e) => set("shipping_city", e.target.value)} autoComplete="address-level2" required />
               </Field>
               <Field label="Notas (opcional)" name="notes" error={errors.notes}>
-                <input className={inputClass} value={form.notes}
+                <input id="notes" className={inputClass} value={form.notes}
                   onChange={(e) => set("notes", e.target.value)} />
               </Field>
             </div>
